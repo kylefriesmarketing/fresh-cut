@@ -1,0 +1,268 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>FRESH CUT — a lawn mowing simulator</title>
+<style>
+:root{
+  --paper:#f6efdd; --paper2:#efe5cc; --ink:#3d3428; --pencil:#c0392b;
+  --grass:#5a8f3c; --grass-d:#3e6b2a; --gold:#e8b04b; --sky:#bfe0ee;
+  --ui-serif:Georgia,'Times New Roman',serif;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{width:100%;height:100%;overflow:hidden;background:#1c2416;font-family:var(--ui-serif);color:var(--ink)}
+#app{position:fixed;inset:0}
+canvas{display:block}
+button{font-family:var(--ui-serif);cursor:pointer}
+
+/* ---------- generic overlay panels ---------- */
+.overlay{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;z-index:40;background:rgba(20,26,14,.45);backdrop-filter:blur(3px)}
+.hidden{display:none!important}
+.panel{background:var(--paper);border-radius:10px;box-shadow:0 18px 60px rgba(0,0,0,.5), inset 0 0 80px rgba(160,130,80,.12);
+  padding:26px 30px;max-width:760px;width:min(92vw,760px);max-height:88vh;overflow:auto;position:relative}
+.panel::before{content:'';position:absolute;inset:0;border-radius:10px;pointer-events:none;
+  background:radial-gradient(ellipse at 78% 12%, rgba(150,110,60,.10), transparent 42%)}
+.panel h1,.panel h2{letter-spacing:.5px}
+.rule{height:2px;background:linear-gradient(90deg,transparent,rgba(61,52,40,.35),transparent);margin:10px 0 14px}
+
+/* ---------- title ---------- */
+#title{background:linear-gradient(#9ecfe2 0%, #cfe8d6 55%, #7fae5b 56%, #558b39 100%)}
+#title .panel{background:transparent;box-shadow:none;text-align:center;max-width:900px}
+#logo{font-size:min(11vw,92px);font-weight:bold;color:#fff;line-height:.95;
+  text-shadow:0 3px 0 #3e6b2a, 0 8px 24px rgba(20,40,10,.45);letter-spacing:2px}
+#logo .cut{color:#ffe9b0}
+#tagline{color:#f4f9ee;font-style:italic;margin-top:6px;text-shadow:0 1px 3px rgba(20,40,10,.5);font-size:19px}
+.menu-btns{display:flex;flex-direction:column;gap:12px;margin-top:34px;align-items:center}
+.mbtn{font-size:20px;padding:12px 44px;border-radius:8px;border:2px solid #3e6b2a;background:var(--paper);color:var(--ink);
+  box-shadow:0 4px 0 #3e6b2a;transition:transform .06s}
+.mbtn:hover{transform:translateY(-2px)}
+.mbtn:active{transform:translateY(2px);box-shadow:0 1px 0 #3e6b2a}
+.mbtn.small{font-size:15px;padding:8px 26px}
+#title-foot{margin-top:26px;color:#eef6e4;font-size:13px;opacity:.85;text-shadow:0 1px 2px rgba(20,40,10,.5)}
+
+/* ---------- HUD ---------- */
+#hud{position:fixed;inset:0;pointer-events:none;z-index:20;opacity:0;transition:opacity .4s}
+#hud.on{opacity:1}
+#pct{position:fixed;top:16px;left:18px;background:rgba(28,36,22,.62);color:#f2ead2;border-radius:10px;padding:8px 16px;
+  font-size:28px;min-width:112px;text-align:center;text-shadow:0 1px 2px #000}
+#pct small{display:block;font-size:11px;letter-spacing:2px;opacity:.75}
+#jobname{position:fixed;top:16px;left:50%;transform:translateX(-50%);color:#fff;font-style:italic;font-size:15px;
+  text-shadow:0 1px 3px rgba(0,0,0,.6);opacity:.9}
+#toolchip{position:fixed;bottom:18px;left:18px;background:rgba(28,36,22,.62);color:#f2ead2;border-radius:10px;
+  padding:8px 14px;font-size:15px;text-shadow:0 1px 2px #000}
+#toolchip b{color:var(--gold)}
+#toolchip .keys{font-size:11px;opacity:.7;display:block;margin-top:2px}
+#radiochip{position:fixed;bottom:18px;left:50%;transform:translateX(-50%);background:rgba(28,36,22,.55);color:#e8d9b0;
+  border-radius:16px;padding:5px 16px;font-size:12.5px;font-style:italic;opacity:0;transition:opacity .5s}
+#radiochip.on{opacity:1}
+#zones{position:fixed;top:80px;left:18px;background:rgba(28,36,22,.55);border-radius:10px;padding:10px 14px;color:#e9e2cc;
+  font-size:13px;max-width:240px;display:none}
+#zones.on{display:block}
+#zones div{display:flex;justify-content:space-between;gap:14px;padding:1px 0}
+#zones div.done{color:#9fd77f}
+#zones div.done::after{content:' ✓'}
+#zonebanner{position:fixed;top:22%;left:50%;transform:translateX(-50%) scale(.9);text-align:center;opacity:0;pointer-events:none;
+  transition:opacity .3s, transform .3s}
+#zonebanner.pop{opacity:1;transform:translateX(-50%) scale(1)}
+#zonebanner .zb1{font-size:15px;color:#ffe9b0;letter-spacing:3px;text-shadow:0 1px 4px rgba(0,0,0,.7)}
+#zonebanner .zb2{font-size:30px;color:#fff;text-shadow:0 2px 6px rgba(0,0,0,.7)}
+#texts{position:fixed;right:16px;bottom:16px;width:280px;display:flex;flex-direction:column;gap:8px;align-items:flex-end}
+.sms{background:#fdfbf4;border-radius:12px 12px 3px 12px;padding:9px 13px;font-size:13.5px;box-shadow:0 4px 14px rgba(0,0,0,.35);
+  max-width:100%;animation:smsin .35s ease;border:1px solid rgba(61,52,40,.15)}
+.sms .who{font-size:10.5px;letter-spacing:1.5px;color:#8a7c62;margin-bottom:2px;text-transform:uppercase}
+@keyframes smsin{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
+#hint{position:fixed;bottom:76px;left:50%;transform:translateX(-50%);color:#fff;font-size:14px;font-style:italic;
+  text-shadow:0 1px 4px rgba(0,0,0,.75);opacity:0;transition:opacity .5s;text-align:center}
+#hint.on{opacity:.95}
+#crosshair{position:fixed;top:50%;left:50%;width:5px;height:5px;border-radius:50%;background:rgba(255,255,255,.55);
+  transform:translate(-50%,-50%);box-shadow:0 0 4px rgba(0,0,0,.4)}
+#vign{position:fixed;inset:0;pointer-events:none;z-index:15;
+  background:radial-gradient(ellipse at center, transparent 62%, rgba(30,26,10,.28) 100%)}
+#flash{position:fixed;inset:0;background:#fff8e0;opacity:0;pointer-events:none;z-index:30}
+
+/* ---------- notebook ---------- */
+#notebook .panel{background:var(--paper);width:min(94vw,860px)}
+.nb-head{display:flex;justify-content:space-between;align-items:baseline}
+.nb-head h2{font-size:26px}
+.nb-head .sub{font-style:italic;color:#7a6c52;font-size:13px}
+.blockhead{margin:16px 0 6px;font-size:13px;letter-spacing:2.5px;color:var(--pencil);text-transform:uppercase;font-weight:bold}
+.jobrow{display:flex;align-items:center;gap:12px;padding:9px 10px;border-radius:8px;border:1px dashed transparent}
+.jobrow:not(.locked):hover{background:rgba(90,143,60,.10);border-color:rgba(90,143,60,.4);cursor:pointer}
+.jobrow.locked{opacity:.45}
+.jobrow .st{width:26px;text-align:center;font-size:17px}
+.jobrow .nm{flex:1}
+.jobrow .nm b{font-size:16.5px}
+.jobrow .nm .margin{display:block;font-size:12.5px;color:var(--pencil);font-style:italic;margin-top:1px}
+.jobrow .meta{font-size:12px;color:#7a6c52;text-align:right;white-space:nowrap}
+.jobrow .done-ink{color:var(--pencil);font-weight:bold;letter-spacing:1px}
+.gearnote{margin:8px 0 0;padding:8px 12px;background:rgba(232,176,75,.16);border-radius:8px;font-size:13px;font-style:italic}
+.nb-close{position:absolute;top:14px;right:16px;border:none;background:none;font-size:22px;color:#7a6c52}
+.nb-tabs{display:flex;gap:8px;margin-top:10px}
+.nb-tab{border:1px solid rgba(61,52,40,.3);background:var(--paper2);padding:5px 16px;border-radius:16px;font-size:13px}
+.nb-tab.on{background:var(--grass);color:#fff;border-color:var(--grass-d)}
+#pegboard-list{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px;margin-top:12px}
+.peg{background:#fffdf6;border:1px solid rgba(61,52,40,.18);border-radius:8px;padding:10px;font-size:13px;text-align:center}
+.peg .ico{font-size:26px}
+.peg .tier{font-size:10px;letter-spacing:2px;color:#8a7c62;text-transform:uppercase}
+.peg.keep{border-color:var(--gold);box-shadow:0 0 0 1px var(--gold)}
+
+/* ---------- briefing ---------- */
+#brief .panel{max-width:560px;text-align:left}
+#brief h2{font-size:24px}
+#brief .client{color:#7a6c52;font-style:italic;margin-top:2px;font-size:14px}
+#brief .blurb{margin:12px 0;line-height:1.5;font-size:15.5px}
+#brief .popnote{margin:14px 0;padding:10px 14px;background:rgba(192,57,43,.07);border-left:3px solid var(--pencil);
+  font-style:italic;color:var(--pencil);font-size:14.5px}
+#brief .stats{font-size:13px;color:#7a6c52;margin-bottom:6px}
+#brief .btns{display:flex;gap:10px;margin-top:16px}
+
+/* ---------- job complete / postcard ---------- */
+#complete .panel{max-width:700px;text-align:center}
+#complete h2{font-size:26px;color:var(--grass-d)}
+#pc-wrap{position:relative;margin:14px auto;width:100%;max-width:600px;border:10px solid #fffdf6;border-radius:4px;
+  box-shadow:0 10px 30px rgba(0,0,0,.35);background:#222}
+#pc-canvas{display:block;width:100%;height:auto}
+#pc-slider{width:90%;margin:10px auto 0}
+#pc-stamp{position:absolute;top:8px;right:10px;font-size:11px;letter-spacing:2px;color:#fffdf6;opacity:.9;
+  border:1.5px solid #fffdf6;border-radius:4px;padding:3px 7px;transform:rotate(4deg);text-transform:uppercase}
+#comp-stats{font-size:14px;color:#5c5142;margin-top:8px}
+#comp-reply{margin:12px auto 0;max-width:440px}
+#complete .btns{display:flex;gap:10px;justify-content:center;margin-top:16px}
+
+/* ---------- pause / settings ---------- */
+#pause .panel{max-width:440px;text-align:center}
+#pause h2{margin-bottom:6px}
+.setrow{display:flex;justify-content:space-between;align-items:center;padding:7px 2px;font-size:14.5px;gap:16px}
+.setrow input[type=range]{width:150px}
+.setrow select{font-family:var(--ui-serif);padding:2px 6px}
+.small-note{font-size:12px;color:#7a6c52;font-style:italic;margin-top:10px}
+
+/* ---------- credits ---------- */
+#credits{background:#0d1208}
+#credits .panel{background:transparent;box-shadow:none;text-align:center;color:#e9e2cc}
+#credits h2{font-size:30px;color:#ffe9b0}
+#credits p{margin:10px 0;line-height:1.6;font-size:15px}
+#credits .dedic{font-style:italic;color:#9fb88a;margin-top:26px}
+
+@media (max-width:640px){
+  #pct{font-size:20px;min-width:90px}
+  #texts{width:210px}
+}
+</style>
+</head>
+<body>
+<div id="app"></div>
+<div id="vign"></div>
+
+<!-- HUD -->
+<div id="hud">
+  <div id="crosshair"></div>
+  <div id="pct">0%<small>MARGE'S PLACE</small></div>
+  <div id="jobname"></div>
+  <div id="zones"></div>
+  <div id="zonebanner"><div class="zb1">ZONE CLEAN</div><div class="zb2">Front Walk</div></div>
+  <div id="toolchip"><b>MOWER</b> — Old Faithful<span class="keys">E tool · F high-cut · R radio · Z zones · L last blade · Esc pause</span></div>
+  <div id="radiochip">♪ WHZL — The Porch</div>
+  <div id="texts"></div>
+  <div id="hint"></div>
+</div>
+<div id="flash"></div>
+
+<!-- Title -->
+<div id="title" class="overlay">
+  <div class="panel">
+    <div id="logo">FRESH <span class="cut">CUT</span></div>
+    <div id="tagline">a lawn mowing simulator</div>
+    <div class="menu-btns">
+      <button class="mbtn" id="bt-continue">Open Pop's Notebook</button>
+      <button class="mbtn small" id="bt-daily">Daily Lawn</button>
+      <button class="mbtn small" id="bt-settings">Settings</button>
+    </div>
+    <div id="title-foot">Hazel Park, deep summer. The mower still starts on the first pull.</div>
+  </div>
+</div>
+
+<!-- Notebook -->
+<div id="notebook" class="overlay hidden">
+  <div class="panel">
+    <button class="nb-close" data-close="notebook">✕</button>
+    <div class="nb-head"><h2>Pop's Notebook</h2><div class="sub" id="nb-progress"></div></div>
+    <div class="nb-tabs">
+      <button class="nb-tab on" data-tab="jobs">The Route</button>
+      <button class="nb-tab" data-tab="pegboard">The Pegboard</button>
+    </div>
+    <div class="rule"></div>
+    <div id="nb-jobs"></div>
+    <div id="nb-pegboard" class="hidden"><div id="pegboard-list"></div></div>
+  </div>
+</div>
+
+<!-- Briefing -->
+<div id="brief" class="overlay hidden">
+  <div class="panel">
+    <h2 id="bf-name"></h2>
+    <div class="client" id="bf-client"></div>
+    <div class="rule"></div>
+    <div class="blurb" id="bf-blurb"></div>
+    <div class="popnote" id="bf-pop"></div>
+    <div class="stats" id="bf-stats"></div>
+    <div class="btns">
+      <button class="mbtn" id="bf-go">Start the mower</button>
+      <button class="mbtn small" id="bf-back">Back</button>
+    </div>
+  </div>
+</div>
+
+<!-- Complete -->
+<div id="complete" class="overlay hidden">
+  <div class="panel">
+    <h2 id="comp-title">Fresh Cut.</h2>
+    <div id="pc-wrap">
+      <canvas id="pc-canvas" width="1200" height="675"></canvas>
+      <div id="pc-stamp">HAZEL PARK</div>
+    </div>
+    <input type="range" id="pc-slider" min="0" max="100" value="50">
+    <div id="comp-stats"></div>
+    <div id="comp-reply"></div>
+    <div class="btns">
+      <button class="mbtn small" id="comp-save">Save postcard</button>
+      <button class="mbtn" id="comp-next">Back to the notebook</button>
+    </div>
+  </div>
+</div>
+
+<!-- Pause / settings -->
+<div id="pause" class="overlay hidden">
+  <div class="panel">
+    <h2 id="pause-title">Take a breather</h2>
+    <div class="rule"></div>
+    <div class="setrow"><span>Engine volume</span><input type="range" id="s-veng" min="0" max="100" value="70"></div>
+    <div class="setrow"><span>Ambience volume</span><input type="range" id="s-vamb" min="0" max="100" value="80"></div>
+    <div class="setrow"><span>Radio volume</span><input type="range" id="s-vrad" min="0" max="100" value="65"></div>
+    <div class="setrow"><span>Mouse feel</span><input type="range" id="s-sens" min="20" max="200" value="100"></div>
+    <div class="setrow"><span>Invert look</span><input type="checkbox" id="s-invy"></div>
+    <div class="setrow"><span>Camera bob</span><input type="checkbox" id="s-bob" checked></div>
+    <div class="setrow"><span>Quality</span><select id="s-qual"><option value="auto">Auto</option><option value="high">Lush</option><option value="med">Tidy</option><option value="low">Light</option></select></div>
+    <div class="btns" style="display:flex;gap:10px;justify-content:center;margin-top:14px">
+      <button class="mbtn small" id="ps-resume">Back to the yard</button>
+      <button class="mbtn small" id="ps-quit">Leave job (progress saved)</button>
+    </div>
+    <div class="small-note">Grass stays cut. It always will.</div>
+  </div>
+</div>
+
+<!-- Credits -->
+<div id="credits" class="overlay hidden">
+  <div class="panel">
+    <h2>FRESH CUT</h2>
+    <p id="cred-body"></p>
+    <div class="dedic" id="cred-dedic"></div>
+    <div class="menu-btns"><button class="mbtn small" id="cred-done">The porch light's on</button></div>
+  </div>
+</div>
+
+<script type="importmap">{"imports":{"three":"./lib/three.module.js"}}</script>
+<script type="module" src="mow/main.js"></script>
+</body>
+</html>
