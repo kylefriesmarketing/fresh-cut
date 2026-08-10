@@ -233,6 +233,11 @@ export function makeMower(gear) {
     g.add(box(w * 0.85, 0.16, 0.8, 0x2c2c2c, 0, 0.2, 0.35));
     g.add(box(0.5, 0.4, 0.5, 0x333, 0, 0.75, -0.45)); // seat
     const sw = new THREE.Mesh(new THREE.TorusGeometry(0.17, 0.03, 6, 14), mat(0x222)); sw.rotation.x = 1.1; sw.position.set(0, 0.85, 0.15); g.add(sw);
+    // rear catcher — same fill contract as the walk-behind bag (game drives .scale via userData.bag)
+    const bagG = new THREE.Group(); bagG.position.set(0, 0.72, -0.82); g.add(bagG);
+    const bin = new THREE.Mesh(new THREE.BoxGeometry(0.6, 0.32, 0.3), mat(0x565e42)); bin.position.set(0, -0.16, -0.02); bagG.add(bin);
+    bagG.add(box(0.62, 0.03, 0.32, 0x8a8f94, 0, 0, -0.02));
+    g.userData.bag = bagG;
     for (const [x, z, r] of [[-w / 2 + 0.1, 0.75, 0.16], [w / 2 - 0.1, 0.75, 0.16], [-w / 2 + 0.05, -0.5, 0.24], [w / 2 - 0.05, -0.5, 0.24]]) {
       const wh = new THREE.Mesh(new THREE.CylinderGeometry(r, r, 0.14, 12), mat(0x2c2c2c)); wh.rotation.z = Math.PI / 2; wh.position.set(x, r, z); wh.userData.wheel = r; g.add(wh);
     }
@@ -240,13 +245,22 @@ export function makeMower(gear) {
     const deck = box(w, 0.16, w * 0.82, deckC, 0, 0.18, 0); g.add(deck);
     g.add(cyl(0.13, 0.15, 0.16, 0x2c2c2c, 0.08, 0.34, 0.05, 10)); // engine
     g.add(cyl(0.045, 0.045, 0.1, 0x555, 0.08, 0.44, 0.05, 8));
-    if (gear === 'self') g.add(box(0.3, 0.34, 0.24, 0x2c3b45, 0, 0.32, -w * 0.41 - 0.1)); // bag
     for (const [x, z] of [[-w / 2 + 0.06, w * 0.33], [w / 2 - 0.06, w * 0.33], [-w / 2 + 0.06, -w * 0.33], [w / 2 - 0.06, -w * 0.33]]) {
       const wh = new THREE.Mesh(new THREE.CylinderGeometry(0.09, 0.09, 0.06, 10), mat(0x2c2c2c)); wh.rotation.z = Math.PI / 2; wh.position.set(x, 0.09, z); wh.userData.wheel = 0.09; g.add(wh);
     }
-    // handle back toward the player
-    for (const sx of [-0.16, 0.16]) { const h = cyl(0.018, 0.018, 1.15, 0x8a8f94, sx, 0.62, -0.52, 6); h.rotation.x = 0.62; g.add(h); }
-    const grip = cyl(0.024, 0.024, 0.42, 0x333, 0, 0.98, -0.83, 6); grip.rotation.z = Math.PI / 2; g.add(grip);
+    // handle: two tubes run LOW at the deck's rear edge UP to the grip bar in the player's hands
+    const Ay = 0.24, Az = -w * 0.41 + 0.02;   // attach point on the deck
+    const Gy = 1.05, Gz = -0.84;              // grip lands just under the camera (player pushes from ~0.86 back)
+    const hang = Math.atan2(Gz - Az, Gy - Ay);
+    const hl = Math.hypot(Gy - Ay, Gz - Az);
+    for (const sx of [-0.17, 0.17]) { const h = cyl(0.018, 0.018, hl, 0x8a8f94, sx, (Ay + Gy) / 2, (Az + Gz) / 2, 6); h.rotation.x = hang; g.add(h); }
+    const grip = cyl(0.026, 0.026, 0.46, 0x333, 0, Gy, Gz, 8); grip.rotation.z = Math.PI / 2; g.add(grip);
+    const cross = cyl(0.014, 0.014, 0.34, 0x8a8f94, 0, Ay + (Gy - Ay) * 0.38, Az + (Gz - Az) * 0.38, 6); cross.rotation.z = Math.PI / 2; g.add(cross);
+    // rear grass bag — hangs from the tubes behind the deck; the game inflates it as it fills
+    const bagG = new THREE.Group(); bagG.position.set(0, 0.62, (Az + Gz) / 2 + 0.02); g.add(bagG);
+    const cloth = new THREE.Mesh(new THREE.BoxGeometry(0.34, 0.36, 0.30), mat(0x565e42)); cloth.position.set(0, -0.20, 0.02); cloth.rotation.x = hang * 0.4; bagG.add(cloth);
+    const rim = box(0.37, 0.028, 0.32, 0x8a8f94, 0, 0, 0.02); rim.rotation.x = hang * 0.4; bagG.add(rim);
+    g.userData.bag = bagG;
     if (gear === 'push') { // Old Faithful's dents & rust patch
       g.add(box(0.12, 0.02, 0.1, 0x8f5b3a, -0.12, 0.27, 0.12));
     }

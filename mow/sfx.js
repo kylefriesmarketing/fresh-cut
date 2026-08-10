@@ -170,6 +170,21 @@ export function thunk() { // bump a prop
   o.frequency.exponentialRampToValueAtTime(48, AC.currentTime + 0.1);
   o.connect(g); env(g, 0.004, 0.3, 0.16); o.start(); o.stop(AC.currentTime + 0.25);
 }
+export function bagDump() { // the bag tips out — a soft grass whump, nothing sharp
+  if (!ac()) return;
+  const g = AC.createGain(); g.connect(buses.ui);
+  const n = noiseSrc(); const lp = AC.createBiquadFilter(); lp.type = 'lowpass';
+  lp.frequency.setValueAtTime(1900, AC.currentTime);
+  lp.frequency.exponentialRampToValueAtTime(300, AC.currentTime + 0.34);
+  n.connect(lp); lp.connect(g); env(g, 0.02, 0.2, 0.42);
+  n.start(); n.stop(AC.currentTime + 0.55);
+  const g2 = AC.createGain(); g2.connect(buses.ui);
+  const o = AC.createOscillator(); o.type = 'sine'; o.frequency.setValueAtTime(92, AC.currentTime);
+  o.frequency.exponentialRampToValueAtTime(50, AC.currentTime + 0.18);
+  const t = AC.currentTime;
+  g2.gain.setValueAtTime(0, t + 0.04); g2.gain.linearRampToValueAtTime(0.16, t + 0.07); g2.gain.exponentialRampToValueAtTime(0.0001, t + 0.34);
+  o.connect(g2); o.start(t + 0.04); o.stop(t + 0.4);
+}
 export function squeak() { // gnome / toy bump
   if (!ac()) return;
   const g = AC.createGain(); g.connect(buses.ui);

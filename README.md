@@ -13,6 +13,27 @@ Deploy = copy the whole folder to any static host (GitHub Pages works as-is).
 **F** high-cut lever (jungle grass needs it first) · hold **LMB** to trim ·
 **R** Pop's radio · **Z** zone list · **L** last-blade glow · **Esc** pause.
 
+## v1.2 (2026-08-09) — controls + the bag (first playtest feedback)
+
+- **A/D un-inverted.** Strafe moved along the LEFT vector (forward is `(sin,cos)`,
+  so screen-right is `(-cos,+sin)` — the old code used the negation). D is right now.
+- **Handlebars rebuilt.** The tubes used to slope down *toward the player* with the
+  grip floating disconnected above them. Now two tubes run from the deck's rear
+  edge up to a grip bar at hand height (geometry computed from attach/grip points,
+  so all deck widths line up), plus a crossbar. Trimmer now held on the RIGHT.
+- **Every mower has a grass bag** (rear bag on walk-behinds, catcher on the rider).
+  It visibly inflates as the deck eats (fill = fresh-cut texels / capacity;
+  110 m² push/self, 140 wide, 190 rider), jiggles with the engine, and when full it
+  **tips itself out** — clip burst + soft whump (`sfx.bagDump`), never a chore, no
+  interruption. First time ever: one quiet parenthetical hint. Fill and bags-emptied
+  survive save/resume.
+- `serve.mjs` worked from no path containing a space (`URL.pathname` keeps `%20`);
+  now uses `fileURLToPath`. New QA hook: `__fc.renderOnce(dt)` renders one real
+  frame headlessly (the Browser pane suspends rAF) — pair with `__fc.shot()`.
+- Verified: strafe direction at two yaws + A/W regression, bag fill→dump→hint→
+  save-round-trip numerically, push/wide/rider boot + complete, trimmer side +0.25,
+  pixel-diff proof the grip/tubes render connected, 0 console errors.
+
 ## v1.1 (2026-08-08) — houses + feel pass
 
 Houses on 16 lots (porches, chimneys, shutters, glowing windows at golden hour;
@@ -56,7 +77,7 @@ clouds; all roofs rebuilt as true gables. Full battery re-verified: 24/24.
   headless-safe (no audio device → silent no-ops).
 - `test/` — Playwright harness: `smoke` (loop), `visual` (screenshots), `alljobs`
   (every job boots→mows→completes; jungle-lever logic; resume round-trip).
-  Debug hooks: `__fc.startJob/mowAll/stripes/teleport/look/state/drive`.
+  Debug hooks: `__fc.startJob/mowAll/stripes/teleport/look/state/drive/renderOnce/shot`.
 
 **Verified 2026-08-08:** 24/24 jobs complete headlessly, 0 console errors across the
 battery; resume byte-matches; jungle lever enforced; postcards render both sides.

@@ -106,6 +106,11 @@ function beginJob(def, gear) {
       tool: (tool, high) => ui.setTool(tool, high, G.gearKey),
       discover: d => onDiscover(d),
       complete: stats => onComplete(stats),
+      bagDump: () => {
+        if (localStorage.getItem('fc-bagged')) return;
+        localStorage.setItem('fc-bagged', '1');
+        ui.hint("(bag's full — it tips itself out by the curb. that smell is the whole job.)", 6000);
+      },
     }
   });
   // resume?
@@ -240,15 +245,9 @@ bind('s-qual', 'qual', () => ui.hint('Quality applies next job.'));
 // ---------- loop ----------
 let last = performance.now(), acc = 0, smoothFov = 74;
 const STEP = 0.02;
-function loop(now) {
-  requestAnimationFrame(loop);
-  const dt = Math.min(0.1, (now - last) / 1000); last = now;
-  if (!G || !scene) return;
-  if (paused || document.hidden) { return; }
-  input.sens = S.sens / 100; input.invY = S.invy;
-  acc += dt;
-  let guard = 0;
-  while (acc >= STEP && guard++ < 6) { G.update(STEP, input); acc -= STEP; }
+// one visual frame (camera + render), shared by the loop and the __fc.renderOnce QA hook —
+// the Browser pane suspends rAF, so headless verification needs a callable render path
+function drawFrame(dt) {
   G.frame(camera, dt);
   const c = G.camPos();
   // camera rides a shoulder-width behind the push point so the mower lives in frame
@@ -261,6 +260,17 @@ function loop(now) {
   smoothFov += ((74 + (G.tool === 'mow' ? G.load * 3.2 : 0)) - smoothFov) * Math.min(1, dt * 3);
   if (Math.abs(camera.fov - smoothFov) > 0.05) { camera.fov = smoothFov; camera.updateProjectionMatrix(); }
   renderer.render(scene, camera);
+}
+function loop(now) {
+  requestAnimationFrame(loop);
+  const dt = Math.min(0.1, (now - last) / 1000); last = now;
+  if (!G || !scene) return;
+  if (paused || document.hidden) { return; }
+  input.sens = S.sens / 100; input.invY = S.invy;
+  acc += dt;
+  let guard = 0;
+  while (acc >= STEP && guard++ < 6) { G.update(STEP, input); acc -= STEP; }
+  drawFrame(dt);
   // zone list (on demand)
   if (zonesVisible && !G.done) ui.renderZones(G.zoneNames, G.zoneNames.map((_, i) => G.grass.zonePct(i)), G.zoneDone, true);
   else ui.renderZones([], [], [], false);
@@ -297,6 +307,7 @@ window.__fc = {
     }
   },
   shot: () => renderer.domElement.toDataURL('image/jpeg', 0.85),
+  renderOnce: (dt = 0.016) => { if (G && scene) drawFrame(dt); },
 };
 
 // ---------- URL params (test / share) ----------

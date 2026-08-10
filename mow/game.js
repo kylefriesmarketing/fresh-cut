@@ -44,6 +44,10 @@ export class Game {
     this.trimG = makeTrimmer(); this.trimG.visible = false; scene.add(this.trimG);
     this.trimming = false; this.trimEat = 0;
 
+    // grass bag — fills as the deck eats, tips itself out when full (a beat, never a chore)
+    this.bagFill = 0; this.bagsEmptied = 0; this.bagAnim = 0; this._bagVis = 0;
+    this.bagCap = ({ push: 110, self: 110, wide: 140, rider: 190 }[this.gearKey] || 110) * 64; // m² → texels (8 texels/m)
+
     // zones / completion
     this.zoneDone = (def.zones || []).map(() => false);
     this.dingQ = []; this.dingT = 0;
@@ -94,8 +98,9 @@ export class Game {
     const base = mowing ? this.gear.speed : this.gear.walk;
     this.load = mowing ? this.grass.loadAhead(p.x + Math.sin(p.yaw) * 0.9, p.z + Math.cos(p.yaw) * 0.9, p.yaw) : 0;
     const spd = base * (1 - this.load * 0.38) * (fw < 0 ? 0.6 : 1);
-    let dx = (Math.sin(p.yaw) * fw + Math.cos(p.yaw) * st) * spd * dt;
-    let dz = (Math.cos(p.yaw) * fw - Math.sin(p.yaw) * st) * spd * dt;
+    // forward = (sin yaw, cos yaw), so screen-right = (-cos yaw, +sin yaw) — D must move right
+    let dx = (Math.sin(p.yaw) * fw - Math.cos(p.yaw) * st) * spd * dt;
+    let dz = (Math.cos(p.yaw) * fw + Math.sin(p.yaw) * st) * spd * dt;
     const moving = (fw !== 0 || st !== 0);
     this.speedF += ((moving ? 1 : 0) - this.speedF) * Math.min(1, dt * 6);
 
@@ -130,6 +135,11 @@ export class Game {
       const side = this.gear.swath * 0.46, cy = Math.cos(p.yaw), sy = Math.sin(p.yaw);
       this.grass.stampTrack(mx + cy * side, mz - sy * side);
       this.grass.stampTrack(mx - cy * side, mz + sy * side);
+      // the bag breathes in what the deck eats
+      if (res.fresh > 0) {
+        this.bagFill += res.fresh / this.bagCap;
+        if (this.bagFill >= 1) this._dumpBag();
+      }
       if (res.blocked > 8 && res.fresh === 0 && this.blockHintT <= 0) {
         this.blockHintT = 5;
         const probe = this.grass.stateAt(mx, mz);
@@ -229,8 +239,17 @@ export class Game {
       const wob = Math.sin(this.time * 26) * 0.01 * this.speedF * (1 + this.load);
       this.mowerG.rotation.z = wob;
       this.mowerG.traverse(o => { if (o.userData.wheel) o.rotation.x += this.speedF * dt * 6 / o.userData.wheel * 0.4; });
+      // the bag swells with the cut, jiggles with the engine, and slumps when it tips out
+      const bag = this.mowerG.userData.bag;
+      if (bag) {
+        if (this.bagAnim > 0) this.bagAnim = Math.max(0, this.bagAnim - dt * 2.2);
+        this._bagVis += (this.bagFill - this._bagVis) * Math.min(1, dt * (this.bagAnim > 0 ? 7 : 2.5));
+        const v = this._bagVis, jig = 1 + Math.sin(this.time * 21) * 0.012 * this.speedF * (0.3 + v);
+        bag.scale.set((0.72 + v * 0.34) * jig, (0.55 + v * 0.5) * jig, 0.72 + v * 0.38);
+      }
     } else {
-      this.trimG.position.set(p.x + Math.sin(p.yaw) * 0.55 + Math.cos(p.yaw) * 0.25, 1.0, p.z + Math.cos(p.yaw) * 0.55 - Math.sin(p.yaw) * 0.25);
+      // held to the player's RIGHT (screen-right = (-cos, +sin))
+      this.trimG.position.set(p.x + Math.sin(p.yaw) * 0.55 - Math.cos(p.yaw) * 0.25, 1.0, p.z + Math.cos(p.yaw) * 0.55 + Math.sin(p.yaw) * 0.25);
       this.trimG.rotation.y = p.yaw;
       this.trimG.traverse(o => { if (o.userData.line) o.rotation.y += dt * (this.trimming ? 55 : 4); });
     }
@@ -263,6 +282,13 @@ export class Game {
     }
   }
   _clearLB() { for (const s of this.lbSprites) s.removeFromParent(); this.lbSprites = []; }
+  _dumpBag() {
+    this.bagFill = 0; this.bagsEmptied++; this.bagAnim = 1;
+    const p = this.p, bx = p.x - Math.sin(p.yaw) * 0.45, bz = p.z - Math.cos(p.yaw) * 0.45;
+    for (let i = 0; i < 3; i++) this.clips.burst(bx, bz, p.yaw + Math.PI, 3, 1.2);
+    sfx.bagDump();
+    this.cb.bagDump?.(this.bagsEmptied);
+  }
   _collect(d, junk) {
     this.found.push(d.i);
     if (junk) { sfx.plink(); }
@@ -295,6 +321,7 @@ export class Game {
       time: this.time, dist: this.dist,
       found: this.found, zoneDone: this.zoneDone,
       tool: this.tool, highCut: this.highCut,
+      bag: this.bagFill, bags: this.bagsEmptied,
     };
   }
   restore(snap) {
@@ -304,6 +331,7 @@ export class Game {
     this.time = snap.time || 0; this.dist = snap.dist || 0;
     this.zoneDone = snap.zoneDone || this.zoneDone;
     this.tool = snap.tool || 'mow'; this.highCut = !!snap.highCut;
+    this.bagFill = snap.bag || 0; this.bagsEmptied = snap.bags || 0; this._bagVis = this.bagFill;
     for (const i of snap.found || []) {
       const d = this.disc.find(dd => dd.i === i);
       if (d) { d.state = 2; this.found.push(i); }
