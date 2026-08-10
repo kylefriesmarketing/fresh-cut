@@ -13,6 +13,33 @@ Deploy = copy the whole folder to any static host (GitHub Pages works as-is).
 **F** high-cut lever (jungle grass needs it first) · hold **LMB** to trim ·
 **R** Pop's radio · **Z** zone list · **L** last-blade glow · **Esc** pause.
 
+## v1.4 (2026-08-09) — the fresh-cut *shading*, which was the real culprit
+
+Kyle: "the grass gets lighter behind the mower… the cutting works but the shading that
+gives it that brighter green clean look is not happening right." He was right, and the
+sim was innocent — the cut boundary was already measured at 3 mm from the deck (v1.3).
+
+- **Fresh cut is now always the clean bright green.** The overlay painted cut ground as
+  `mix(darkGreen, brightGreen, tone)` where `tone` came *entirely* from mow direction —
+  so mowing one way painted the new cut nearly as dark as uncut grass. You genuinely
+  could not see the cut happen under the deck; you only noticed the lane once you were
+  past it and could read the stripes. Cut ground is now a bright base with the direction
+  applying only a ±10% stripe (`vec3(0.42,0.66,0.24) * (0.90 + 0.20*tone)`, alpha
+  0.50→0.60). Measured on two lanes cut in opposite directions under identical lighting:
+  the dark-direction lane went **81 → 100** luma (uncut ≈ 57) while the bright lane held
+  at 128 — stripes intact, neither direction muddy.
+- **No more stubble speckle.** Cut blades were drawn root→tip, so a 4 cm blade showed a
+  dark root under a bright tip and the finished lawn read as dirty. Cut blades now skip
+  the dark root (`tmix` biased to tip) and sit almost exactly on the overlay's green, so
+  the nap reads as turf texture rather than pale specks. Cut height 0.05 → 0.038.
+- Verified: 24/24 jobs, 0 console errors, shaders compile, save round-trip; matched A/B
+  captures with only the shader lines swapped live on one lawn.
+
+⚠️ The mower body *does* occlude the ground directly beneath it from the default camera —
+that is geometry, not a bug. The fix for "I can't see it cut" is contrast, not moving the
+stamp: an earlier build pushed the stamp 1.02 m ahead of the player to make the cut peek
+out in front of the deck, and that is exactly what read as "the lines don't line up."
+
 ## v1.3 (2026-08-09) — the cut lines up, and the lawn is actually clean
 
 Second playtest pass. Both reports were real bugs, in different layers:

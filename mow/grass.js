@@ -264,7 +264,7 @@ function makeBladeMaterial(tex, W, H) {
         hgt *= (0.72 + 0.55 * aRnd.x);
         float cut = step(0.9, st), high = step(0.25, st) * (1.0 - cut);
         hgt = mix(hgt, 0.21 * (0.8 + 0.4 * aRnd.x), high);
-        hgt = mix(hgt, 0.05, cut);
+        hgt = mix(hgt, 0.038, cut);   // a tidy nap, not visible individual blades
         hgt *= (1.0 - noG);
         float y = uv.y;                                   // 0 root → 1 tip
         vTip = y; vTier = tier; vCut = cut;
@@ -299,8 +299,13 @@ function makeBladeMaterial(tex, W, H) {
       void main(){
         vec3 root = vec3(0.16, 0.30, 0.10);
         vec3 tip  = mix(vec3(0.38, 0.60, 0.22), vec3(0.30, 0.48, 0.26), clamp((vTier - 1.0) / 3.0, 0.0, 1.0) * (1.0 - vCut));
-        tip = mix(tip, vec3(0.50, 0.70, 0.27), vCut);         // fresh-cut brightness
-        vec3 col = mix(root, tip, vTip) * vShade * vTone;
+        // cut stubble sits almost exactly on the overlay's fresh-cut green, so the nap reads
+        // as turf texture instead of pale specks scattered over the lawn
+        tip = mix(tip, vec3(0.45, 0.665, 0.245), vCut);
+        // cut stubble skips the dark root entirely — at 4cm a root→tip gradient just
+        // reads as speckle, which is what made a finished lawn look dirty rather than clean
+        float tmix = mix(vTip, 0.58 + 0.42 * vTip, vCut);
+        vec3 col = mix(root, tip, tmix) * vShade * vTone;
         col = mix(col, col * vec3(1.12, 1.0, 0.82), uWarm * 0.55);  // golden hour
         gl_FragColor = vec4(col, 1.0);
       }`
@@ -324,10 +329,14 @@ function makeOverlayMaterial(tex, trackTex) {
         float n = hash(floor(vUv * 420.0)) * 0.06;
         vec3 col; float a;
         if (cut > 0.5) {
+          // fresh cut is ALWAYS the clean bright green; the mow direction only tilts it
+          // +-10% for stripes. (It used to lerp the whole way down to a dark green, so
+          // mowing in one direction painted the new cut nearly as dark as uncut grass —
+          // you couldn't see the cut happen under the deck, only the stripes behind you.)
           float ang = m.g * 6.28318;
           float tone = 0.5 + 0.5 * cos(ang - 0.785);
-          col = mix(vec3(0.30, 0.50, 0.16), vec3(0.47, 0.68, 0.24), tone);
-          a = 0.50;
+          col = vec3(0.42, 0.66, 0.24) * (0.90 + 0.20 * tone);
+          a = 0.60;
         } else if (high > 0.5) {
           col = vec3(0.20, 0.34, 0.13) * (1.0 - n); a = 0.30;
         } else {
