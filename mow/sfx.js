@@ -235,7 +235,9 @@ export function completeChord() { // the 100% — held, warm, then evening settl
 export function click() { if (!ac()) return; const g = AC.createGain(); g.connect(buses.ui); const o = AC.createOscillator(); o.type = 'square'; o.frequency.value = 2000; o.connect(g); env(g, 0.002, 0.06, 0.03); o.start(); o.stop(AC.currentTime + 0.06); }
 
 // ---------------- ambience: deep summer ----------------
-export function ambStart(kind = 'day') {
+// opts.quiet — the finale keeps the air and the birds but loses every sign of other
+// people (no kids, no neighbour mowing). Invariant 5: that yard stays quiet.
+export function ambStart(kind = 'day', opts = {}) {
   if (!ac()) return;
   ambStop();
   const add = (node) => { amb.nodes.push(node); return node; };
@@ -261,23 +263,53 @@ export function ambStart(kind = 'day') {
       amb.timers.push(setTimeout(swell, (dur + 4 + Math.random() * 5) * 1000));
     };
     swell();
-    // birds
+    // birds — three voices, so the hedge doesn't sound like one animal on a loop
     const bird = () => {
       if (!amb.nodes.includes(n)) return;
       const g = AC.createGain(); g.connect(buses.amb);
       const o = AC.createOscillator(); o.type = 'sine';
-      const t = AC.currentTime, f0 = 2200 + Math.random() * 1400;
-      const hops = 2 + (Math.random() * 3 | 0);
-      for (let i = 0; i < hops; i++) {
-        o.frequency.setValueAtTime(f0 * (1 + Math.random() * 0.25), t + i * 0.13);
-        o.frequency.exponentialRampToValueAtTime(f0 * (0.8 + Math.random() * 0.15), t + i * 0.13 + 0.09);
+      const t = AC.currentTime;
+      const roll = Math.random();
+      let span;
+      if (roll < 0.16) {
+        // a crow a few gardens over: low, harsh, and it only ever says it twice
+        o.type = 'sawtooth';
+        const bp = AC.createBiquadFilter(); bp.type = 'bandpass'; bp.frequency.value = 780; bp.Q.value = 3.2;
+        o.connect(bp); bp.connect(g);
+        span = 0.85;
+        for (let i = 0; i < 2; i++) {
+          const tt = t + i * 0.42;
+          o.frequency.setValueAtTime(300, tt); o.frequency.exponentialRampToValueAtTime(205, tt + 0.2);
+          g.gain.setValueAtTime(0, tt); g.gain.linearRampToValueAtTime(0.026, tt + 0.03);
+          g.gain.setTargetAtTime(0, tt + 0.16, 0.05);
+        }
+      } else if (roll < 0.48) {
+        // the lazy two-note one
+        o.connect(g);
+        const f0 = 1900 + Math.random() * 900;
+        span = 0.62;
+        [0, 0.28].forEach((d, i) => {
+          const tt = t + d;
+          o.frequency.setValueAtTime(f0 * (i ? 0.76 : 1), tt);
+          g.gain.setValueAtTime(0, tt); g.gain.linearRampToValueAtTime(0.044, tt + 0.02);
+          g.gain.setTargetAtTime(0, tt + 0.11, 0.05);
+        });
+      } else {
+        o.connect(g);
+        const f0 = 2200 + Math.random() * 1400;
+        const hops = 2 + (Math.random() * 4 | 0);
+        span = hops * 0.13;
+        for (let i = 0; i < hops; i++) {
+          o.frequency.setValueAtTime(f0 * (1 + Math.random() * 0.25), t + i * 0.13);
+          o.frequency.exponentialRampToValueAtTime(f0 * (0.8 + Math.random() * 0.15), t + i * 0.13 + 0.09);
+        }
+        g.gain.setValueAtTime(0, t); g.gain.linearRampToValueAtTime(0.05, t + 0.02);
+        g.gain.setTargetAtTime(0, t + span, 0.05);
       }
-      g.gain.setValueAtTime(0, t); g.gain.linearRampToValueAtTime(0.05, t + 0.02);
-      g.gain.setTargetAtTime(0, t + hops * 0.13, 0.05);
-      o.connect(g); o.start(t); o.stop(t + hops * 0.13 + 0.3);
-      amb.timers.push(setTimeout(bird, 4000 + Math.random() * 9000));
+      o.start(t); o.stop(t + span + 0.35);
+      amb.timers.push(setTimeout(bird, 3200 + Math.random() * 8000));
     };
-    amb.timers.push(setTimeout(bird, 1500));
+    amb.timers.push(setTimeout(bird, 1200));
     // distant sprinkler ticks
     const spr = () => {
       if (!amb.nodes.includes(n)) return;
@@ -292,6 +324,60 @@ export function ambStart(kind = 'day') {
       amb.timers.push(setTimeout(spr, 20000 + Math.random() * 25000));
     };
     amb.timers.push(setTimeout(spr, 9000));
+
+    if (!opts.quiet) {
+      // kids two gardens over — shrieks and laughing, always distant, never words
+      const kids = () => {
+        if (!amb.nodes.includes(n)) return;
+        const calls = 2 + (Math.random() * 3 | 0);
+        for (let i = 0; i < calls; i++) {
+          const t = AC.currentTime + i * (0.4 + Math.random() * 0.8);
+          const g = AC.createGain(); g.connect(buses.amb);
+          const o = AC.createOscillator(); o.type = 'triangle';
+          const f0 = 360 + Math.random() * 430;
+          o.frequency.setValueAtTime(f0, t);
+          o.frequency.exponentialRampToValueAtTime(f0 * (1.35 + Math.random() * 0.5), t + 0.12);
+          o.frequency.exponentialRampToValueAtTime(f0 * 0.82, t + 0.32);
+          const bp = AC.createBiquadFilter(); bp.type = 'bandpass'; bp.frequency.value = 850 + Math.random() * 550; bp.Q.value = 2.1;
+          const lp = AC.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 1500;  // distance takes the edges off
+          o.connect(bp); bp.connect(lp); lp.connect(g);
+          const laugh = Math.random() < 0.4;
+          g.gain.setValueAtTime(0, t); g.gain.linearRampToValueAtTime(0.026, t + 0.04);
+          if (laugh) for (let k = 0; k < 5; k++) { g.gain.setValueAtTime(0.026, t + 0.06 + k * 0.09); g.gain.setValueAtTime(0.007, t + 0.11 + k * 0.09); }
+          g.gain.setTargetAtTime(0, t + (laugh ? 0.55 : 0.24), 0.09);
+          o.start(t); o.stop(t + 1.0);
+        }
+        amb.timers.push(setTimeout(kids, 20000 + Math.random() * 38000));
+      };
+      amb.timers.push(setTimeout(kids, 9000 + Math.random() * 14000));
+
+      // someone else on the block is mowing too — this game's own sound, heard from three
+      // gardens away. Runs a while, drifts as they walk their rows, stops, comes back later.
+      const mower = () => {
+        if (!amb.nodes.includes(n)) return;
+        const t = AC.currentTime, dur = 26 + Math.random() * 44;
+        const g = AC.createGain(); g.gain.value = 0; g.connect(buses.amb);
+        const lp = AC.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 230; lp.Q.value = 0.7;
+        const og = AC.createGain(); og.gain.value = 0.5;
+        const f = 54 + Math.random() * 18;
+        const o1 = add(AC.createOscillator()); o1.type = 'sawtooth'; o1.frequency.value = f;
+        const o2 = add(AC.createOscillator()); o2.type = 'square'; o2.frequency.value = f * 0.5;
+        const put = add(AC.createOscillator()); put.frequency.value = 8.5 + Math.random() * 3.5;
+        const pg = AC.createGain(); pg.gain.value = 0.34;
+        put.connect(pg); pg.connect(og.gain);
+        o1.connect(og); o2.connect(og); og.connect(lp); lp.connect(g);
+        g.gain.setTargetAtTime(0.030, t, 3.5);
+        for (let i = 1; i < 6; i++) g.gain.setTargetAtTime(0.014 + Math.random() * 0.026, t + dur * (i / 6), 3);
+        g.gain.setTargetAtTime(0, t + dur, 4.5);
+        o1.start(t); o2.start(t); put.start(t);
+        const off = t + dur + 16;
+        o1.stop(off); o2.stop(off); put.stop(off);
+        // drop the spent voices out of the tracked list so a long job doesn't collect them
+        o1.onended = () => { for (const nd of [o1, o2, put]) { const ix = amb.nodes.indexOf(nd); if (ix >= 0) amb.nodes.splice(ix, 1); } };
+        amb.timers.push(setTimeout(mower, (dur + 40 + Math.random() * 90) * 1000));
+      };
+      amb.timers.push(setTimeout(mower, 11000 + Math.random() * 22000));
+    }
   } else {
     // crickets for the golden-hour tail
     const cr = () => {
@@ -306,6 +392,7 @@ export function ambStart(kind = 'day') {
     cr();
   }
 }
+export function ambDebug() { return { nodes: amb.nodes.length, timers: amb.timers.length }; }
 export function ambStop() {
   for (const t of amb.timers) clearTimeout(t);
   for (const nd of amb.nodes) { try { nd.stop ? nd.stop() : 0; } catch (_) { } try { nd.disconnect(); } catch (_) { } }

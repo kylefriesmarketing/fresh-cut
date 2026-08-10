@@ -13,6 +13,34 @@ Deploy = copy the whole folder to any static host (GitHub Pages works as-is).
 **F** high-cut lever (jungle grass needs it first) · hold **LMB** to trim ·
 **R** Pop's radio · **Z** zone list · **L** last-blade glow · **Esc** pause.
 
+## v1.8 (2026-08-10) — the sound of the block
+
+Three new voices in the summer bed, all synthesized like everything else, all on the amb
+bus, all tracked and stopped by `ambStop`.
+
+- **Distant lawnmower** — someone three gardens over is doing exactly what you're doing:
+  a detuned saw+square through a 230 Hz lowpass with a ~10 Hz putter AM. It fades in, then
+  drifts up and down over 26–70 s as they walk their own rows, fades out, and comes back a
+  minute or two later. This is the one that makes the street feel like a Saturday.
+- **Kids playing** — distant shrieks and laughing, two gardens away, never words: a
+  triangle with a rising-then-falling pitch glide through a vowel-ish bandpass and a 1.5 kHz
+  lowpass for distance. 40% of calls get a five-beat amplitude wobble (a laugh). Bursts of
+  2–4, every 20–58 s.
+- **Birds, three voices instead of one** — the original trill, a lazy two-note call, and
+  (16% of the time) a crow that only ever says it twice. The old single call on a loop was
+  starting to read as one animal.
+
+⚠️ **The finale gets `{ quiet: true }`** — it keeps the air, cicadas, birds and sprinkler
+but loses every sign of other people (no kids, no neighbour mowing), because invariant 5
+says that yard stays quiet. `ambStart(kind, opts)` carries it; main.js passes
+`{ quiet: !!def.finale }`.
+
+Verified by instrumenting `AudioContext.createOscillator` and classifying every voice by
+type and frequency over a real-time window: in 57 s the day bed produced cicadas at 0 s,
+a crow at 1 s, birdsong from 6 s (9 calls), sprinkler at 9 s, kids at 20 s and all three
+mower voices at 21 s. `ambStop` took 7 nodes / 35 timers to **0 / 0**. New QA hooks:
+`sfx.ambDebug()` and `window.__fc.sfx`.
+
 ## v1.7 (2026-08-10) — the neighbourhood: a street that is lived on
 
 New module **`mow/street.js`** owns everything beyond the fence. Kyle's brief: a lived-in

@@ -128,7 +128,7 @@ function beginJob(def, gear) {
   // the "before" postcard shot, then hand the camera to the player
   beforeImg = null; afterImg = null;
   requestAnimationFrame(() => { beforeImg = droneShot(); });
-  try { sfx.ac(); sfx.engineStart(gear); sfx.ambStart(def.light === 'night' ? 'night' : 'day'); } catch (_) { }
+  try { sfx.ac(); sfx.engineStart(gear); sfx.ambStart(def.light === 'night' ? 'night' : 'day', { quiet: !!def.finale }); } catch (_) { }
   if (def.texts?.arrive) setTimeout(() => ui.sms(def.who, def.texts.arrive), 1800);
   if (!localStorage.getItem('fc-taught')) {
     localStorage.setItem('fc-taught', '1');
@@ -308,6 +308,7 @@ window.__fc = {
   },
   shot: () => renderer.domElement.toDataURL('image/jpeg', 0.85),
   renderOnce: (dt = 0.016) => { if (G && scene) drawFrame(dt); },
+  sfx,
 };
 
 // ---------- URL params (test / share) ----------
