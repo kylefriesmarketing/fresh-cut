@@ -13,6 +13,33 @@ Deploy = copy the whole folder to any static host (GitHub Pages works as-is).
 **F** high-cut lever (jungle grass needs it first) · hold **LMB** to trim ·
 **R** Pop's radio · **Z** zone list · **L** last-blade glow · **Esc** pause.
 
+## v1.5 (2026-08-09) — stripe bands now match the passes you actually drove
+
+"The bright green shading strips still don't line up with the mower as you mow."
+
+`stamp()` bailed out of already-cut texels with `if (st === CUT) continue`, so the cut
+**direction** — which is what the stripe tone is computed from — was written once, by
+whichever pass reached a texel *first*, and never updated. Players overlap their passes,
+so every overlapped sliver kept the previous lane's direction: the visible stripe edge
+sat wherever pass 1 happened to stop, not where you drove pass 2.
+
+Measured with lanes 0.4 m apart, alternating direction (the run-length of each direction
+band across the lawn):
+
+```
+old: 0.5  0.25 0.125 0.375 0.375 0.5  0.375 …   spread 0.375 m  ← ragged, unrelated to the passes
+new: 0.375 0.375 0.375 0.375 0.375 0.5 0.375 …  spread 0.125 m  ← one texel, matches lane spacing
+```
+
+The last mower pass now lays the nap: an already-cut texel gets its direction re-written
+(`this.mask[b+1] = d8`) when the deck passes over it again. Cut counts, `fresh`, zone
+totals and completion are all untouched, so nothing gameplay-side moves — only the tone.
+The trimmer deliberately does **not** re-lay stripes (a string trimmer doesn't lay a nap);
+verified that a trimmer pass leaves an existing stripe pattern byte-identical.
+
+Verified: 24/24 jobs, 0 console errors, overlap follows the newer pass, cut count
+unchanged by a re-stripe.
+
 ## v1.4 (2026-08-09) — the fresh-cut *shading*, which was the real culprit
 
 Kyle: "the grass gets lighter behind the mower… the cutting works but the shading that

@@ -148,9 +148,17 @@ export class GrassField {
       const i = this.idx(tx, tz), b = i * 4, meta = this.mask[b + 2];
       if (meta === M_NOGRASS) continue;
       const st = this.mask[b];
-      if (st === CUT) continue;
+      const noMow = (tool === 'mow') && (meta & (M_WCLUMP | M_TRIM));
+      if (st === CUT) {
+        // The LAST mower pass lays the nap. Without this, an overlapping pass leaves the
+        // overlap wearing the PREVIOUS pass's direction, so the stripe edge ends up
+        // somewhere you never drove — which is exactly "the strips don't line up with the
+        // mower". Direction only; cut counts are untouched, so nothing gameplay-side moves.
+        if (tool === 'mow' && !noMow && this.mask[b + 1] !== d8) { this.mask[b + 1] = d8; this.dirty = true; }
+        continue;
+      }
       if (tool === 'mow') {
-        if (meta & (M_WCLUMP | M_TRIM)) { blocked++; continue; }
+        if (noMow) { blocked++; continue; }
         const tier = meta & 15;
         if (tier >= 4 && st === UNCUT && !high) { blocked++; continue; }  // jungle needs the lever first
         if (high && st === UNCUT && tier >= 3) {                          // high pass knocks it down
