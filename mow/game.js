@@ -41,6 +41,10 @@ export class Game {
     this.p = { x: gate.x + (gate.w || 1.4) / 2, z: 2.0, yaw: 0, pitch: -0.42, vx: 0, vz: 0 };
     this.tool = 'mow'; this.highCut = false; this.load = 0; this.speedF = 0;
     this.mowerG = makeMower(this.gearKey); scene.add(this.mowerG);
+    this.mowerOff = this.gearKey === 'rider' ? 0.4 : 0.86; // how far ahead of the player the mower rides
+    // where the CUT lands: the drawn deck's own centre. These must agree or the cut line
+    // floats ahead of the mower as you push (it used to be a flat 1.02 for every gear).
+    this.deckAt = this.mowerOff + (this.mowerG.userData.deckLocal || 0);
     this.trimG = makeTrimmer(); this.trimG.visible = false; scene.add(this.trimG);
     this.trimming = false; this.trimEat = 0;
 
@@ -96,7 +100,7 @@ export class Game {
     const st = (input.d ? 1 : 0) - (input.a ? 1 : 0);
     const mowing = this.tool === 'mow';
     const base = mowing ? this.gear.speed : this.gear.walk;
-    this.load = mowing ? this.grass.loadAhead(p.x + Math.sin(p.yaw) * 0.9, p.z + Math.cos(p.yaw) * 0.9, p.yaw) : 0;
+    this.load = mowing ? this.grass.loadAhead(p.x + Math.sin(p.yaw) * this.deckAt, p.z + Math.cos(p.yaw) * this.deckAt, p.yaw) : 0;
     const spd = base * (1 - this.load * 0.38) * (fw < 0 ? 0.6 : 1);
     // forward = (sin yaw, cos yaw), so screen-right = (-cos yaw, +sin yaw) — D must move right
     let dx = (Math.sin(p.yaw) * fw - Math.cos(p.yaw) * st) * spd * dt;
@@ -109,7 +113,7 @@ export class Game {
     let nx = p.x + dx, nz = p.z + dz;
     nx = Math.max(R + 0.15, Math.min(def.lot.w - R - 0.15, nx));
     nz = Math.max(R + 0.15, Math.min(def.lot.h - R - 0.15, nz));
-    const noseD = mowing ? 1.0 : 0.4;
+    const noseD = mowing ? this.deckAt : 0.4; // collide with the deck itself, so you can cut right up to a prop
     for (let pass = 0; pass < 2; pass++) {
       for (const c of this.world.colliders) {
         for (const [px, pz, pr] of [[nx, nz, R], [nx + Math.sin(p.yaw) * noseD, nz + Math.cos(p.yaw) * noseD, mowing ? this.gear.swath * 0.5 : 0.2]]) {
@@ -128,9 +132,9 @@ export class Game {
 
     // stamp
     if (mowing && moving && this.speedF > 0.25) {
-      const mx = p.x + Math.sin(p.yaw) * 1.02, mz = p.z + Math.cos(p.yaw) * 1.02;
+      const mx = p.x + Math.sin(p.yaw) * this.deckAt, mz = p.z + Math.cos(p.yaw) * this.deckAt;
       const res = this.grass.stamp(mx, mz, this.gear.swath / 2, 'mow', this.highCut, p.yaw);
-      if (res.fresh > 0 || res.spots.length) for (const [sx, szz] of res.spots) this.clips.burst(sx, szz, p.yaw, 2, 1);
+      if (res.fresh > 0 || res.spots.length) for (const [sx, szz] of res.spots) this.clips.burst(sx, szz, p.yaw, 2, 1, true); // true = up the chute, into the bag
       // wheel tracks pressed into the lawn
       const side = this.gear.swath * 0.46, cy = Math.cos(p.yaw), sy = Math.sin(p.yaw);
       this.grass.stampTrack(mx + cy * side, mz - sy * side);
@@ -220,6 +224,12 @@ export class Game {
     }
     // clouds drift like a long afternoon
     if (this.world.clouds) for (const cl of this.world.clouds) { cl.position.x += dt * 0.35; if (cl.position.x > this.def.lot.w / 2 + 95) cl.position.x = -this.def.lot.w / 2 - 95; }
+    // the chute mouth travels with the mower, so clippings already in the air keep homing
+    const bl = this.mowerG.userData.bagLocal;
+    if (mowing && bl) {
+      const fz = this.mowerOff + bl.z;
+      this.clips.setBagMouth(p.x + Math.sin(p.yaw) * fz, bl.y, p.z + Math.cos(p.yaw) * fz);
+    } else this.clips.noBag();
     this.clips.update(dt);
     this.grass.update(this.time);
   }
@@ -229,11 +239,11 @@ export class Game {
     const p = this.p, mow = this.tool === 'mow';
     // the deck's presence: nearby tall grass shies away from a running mower
     this._mowStr = (this._mowStr || 0) + (((mow && this.speedF > 0.25) ? 1 : 0) - (this._mowStr || 0)) * Math.min(1, dt * 8);
-    const mfx = p.x + Math.sin(p.yaw) * 1.02, mfz = p.z + Math.cos(p.yaw) * 1.02;
+    const mfx = p.x + Math.sin(p.yaw) * this.deckAt, mfz = p.z + Math.cos(p.yaw) * this.deckAt;
     this.grass.setMow(mfx, mfz, this._mowStr);
     this.mowerG.visible = mow; this.trimG.visible = !mow;
     if (mow) {
-      const d = this.gearKey === 'rider' ? 0.4 : 0.86;
+      const d = this.mowerOff;
       this.mowerG.position.set(p.x + Math.sin(p.yaw) * d, 0, p.z + Math.cos(p.yaw) * d);
       this.mowerG.rotation.y = p.yaw;
       const wob = Math.sin(this.time * 26) * 0.01 * this.speedF * (1 + this.load);
@@ -283,9 +293,9 @@ export class Game {
   }
   _clearLB() { for (const s of this.lbSprites) s.removeFromParent(); this.lbSprites = []; }
   _dumpBag() {
+    // no spray here on purpose: a dumped pile is exactly the litter the bag exists to prevent.
+    // the bag deflates (frame()) and thumps — the fiction is that it went to the curb.
     this.bagFill = 0; this.bagsEmptied++; this.bagAnim = 1;
-    const p = this.p, bx = p.x - Math.sin(p.yaw) * 0.45, bz = p.z - Math.cos(p.yaw) * 0.45;
-    for (let i = 0; i < 3; i++) this.clips.burst(bx, bz, p.yaw + Math.PI, 3, 1.2);
     sfx.bagDump();
     this.cb.bagDump?.(this.bagsEmptied);
   }
@@ -319,7 +329,9 @@ export class Game {
       cuts: this.grass.snapshotCuts(),
       p: { x: this.p.x, z: this.p.z, yaw: this.p.yaw },
       time: this.time, dist: this.dist,
-      found: this.found, zoneDone: this.zoneDone,
+      // copies, not the live arrays — restore() appends to this.found, so an aliased
+      // snapshot iterates an array it is growing (hangs until the length overflows)
+      found: this.found.slice(), zoneDone: this.zoneDone.slice(),
       tool: this.tool, highCut: this.highCut,
       bag: this.bagFill, bags: this.bagsEmptied,
     };
@@ -329,9 +341,10 @@ export class Game {
     this.grass.restoreCuts(snap.cuts);
     this.p.x = snap.p.x; this.p.z = snap.p.z; this.p.yaw = snap.p.yaw;
     this.time = snap.time || 0; this.dist = snap.dist || 0;
-    this.zoneDone = snap.zoneDone || this.zoneDone;
+    this.zoneDone = (snap.zoneDone || this.zoneDone).slice();
     this.tool = snap.tool || 'mow'; this.highCut = !!snap.highCut;
     this.bagFill = snap.bag || 0; this.bagsEmptied = snap.bags || 0; this._bagVis = this.bagFill;
+    this.found = []; // rebuild from the snapshot rather than appending to whatever was live
     for (const i of snap.found || []) {
       const d = this.disc.find(dd => dd.i === i);
       if (d) { d.state = 2; this.found.push(i); }

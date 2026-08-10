@@ -13,6 +13,36 @@ Deploy = copy the whole folder to any static host (GitHub Pages works as-is).
 **F** high-cut lever (jungle grass needs it first) · hold **LMB** to trim ·
 **R** Pop's radio · **Z** zone list · **L** last-blade glow · **Esc** pause.
 
+## v1.3 (2026-08-09) — the cut lines up, and the lawn is actually clean
+
+Second playtest pass. Both reports were real bugs, in different layers:
+
+- **The cut now lands under the deck.** The stamp used a hardcoded `1.02` m for every
+  gear while the mower is *drawn* at `0.86` (walk-behind) / `0.75` (rider's deck) — so
+  the cut line floated 16 cm ahead of the push mower and **27 cm** ahead of the rider.
+  Mowers now publish `userData.deckLocal` and the sim derives `game.deckAt` from it;
+  stamping, wheel tracks, engine load, the shy-away effect and the nose collider all
+  read that one number. Measured offset after: **3 mm** (one tick of render lag).
+- **Cut grass no longer reads as clippings on the ground.** In the blade shader `lean`
+  was an *absolute* world offset (`aRnd.z * 0.35`) applied as `y²·lean` — fine on a
+  66 cm blade, but it threw a 5 cm cut blade's tip up to 35 cm sideways, so every mown
+  texel rendered a pale blade lying flat on the lawn. `lean` now scales with blade
+  height (`* 0.55 * hgt`): tall grass is pixel-identical, cut stubble stands up, and a
+  finished lawn reads as smooth turf + stripes. Verified as a matched A/B on one lawn.
+- **Clippings are now collected instead of littering.** Mown clippings are tagged and
+  vacuumed to the bag mouth (no gravity, no ground contact) and swallowed within ~0.2 s;
+  the mouth tracks the mower so in-flight clippings keep homing. Trimmer spray still
+  falls to the lawn on purpose — no bag on a trimmer. The bag dump no longer sprays a
+  pile either (that was the same litter it exists to prevent).
+- **Fixed a latent save bug** found by the harness: `snapshot()` handed out the live
+  `found`/`zoneDone` arrays, and `restore()` *appends* to `found` — so a same-instance
+  snapshot→restore iterated an array it was growing and hung until the length
+  overflowed. Snapshot now copies; restore rebuilds. Only bit tests (production
+  round-trips through JSON), but it would have bitten any future in-place resume.
+- Verified: **24/24 jobs** boot → mow → complete with deck alignment, bag present and
+  **0 clippings resting on the lawn**, 0 console errors; push/rider alignment measured;
+  bag fill → dump → save round-trip numeric.
+
 ## v1.2 (2026-08-09) — controls + the bag (first playtest feedback)
 
 - **A/D un-inverted.** Strafe moved along the LEFT vector (forward is `(sin,cos)`,

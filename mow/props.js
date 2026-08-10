@@ -238,6 +238,8 @@ export function makeMower(gear) {
     const bin = new THREE.Mesh(new THREE.BoxGeometry(0.6, 0.32, 0.3), mat(0x565e42)); bin.position.set(0, -0.16, -0.02); bagG.add(bin);
     bagG.add(box(0.62, 0.03, 0.32, 0x8a8f94, 0, 0, -0.02));
     g.userData.bag = bagG;
+    g.userData.bagLocal = { y: 0.72, z: -0.82 }; // mouth, in mower-local space (+z forward)
+    g.userData.deckLocal = 0.35;                 // the cutting deck's centre — the cut must land HERE
     for (const [x, z, r] of [[-w / 2 + 0.1, 0.75, 0.16], [w / 2 - 0.1, 0.75, 0.16], [-w / 2 + 0.05, -0.5, 0.24], [w / 2 - 0.05, -0.5, 0.24]]) {
       const wh = new THREE.Mesh(new THREE.CylinderGeometry(r, r, 0.14, 12), mat(0x2c2c2c)); wh.rotation.z = Math.PI / 2; wh.position.set(x, r, z); wh.userData.wheel = r; g.add(wh);
     }
@@ -261,6 +263,8 @@ export function makeMower(gear) {
     const cloth = new THREE.Mesh(new THREE.BoxGeometry(0.34, 0.36, 0.30), mat(0x565e42)); cloth.position.set(0, -0.20, 0.02); cloth.rotation.x = hang * 0.4; bagG.add(cloth);
     const rim = box(0.37, 0.028, 0.32, 0x8a8f94, 0, 0, 0.02); rim.rotation.x = hang * 0.4; bagG.add(rim);
     g.userData.bag = bagG;
+    g.userData.bagLocal = { y: 0.62, z: (Az + Gz) / 2 + 0.02 }; // mouth, in mower-local space (+z forward)
+    g.userData.deckLocal = 0;                                   // deck box sits at the group origin
     if (gear === 'push') { // Old Faithful's dents & rust patch
       g.add(box(0.12, 0.02, 0.1, 0x8f5b3a, -0.12, 0.27, 0.12));
     }

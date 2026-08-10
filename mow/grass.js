@@ -275,7 +275,10 @@ function makeBladeMaterial(tex, W, H) {
         vShade = mix(1.0, 0.82, (1.0 - cut) * (1.0 - high) * clamp((tier - 1.0) / 3.0, 0.0, 1.0)) - wcl * (1.0 - cut) * 0.14;
         // build the blade
         float w = 0.027 * (1.0 + 0.5 * aRnd.w) * (1.0 - y * 0.82);
-        float lean = aRnd.z * 0.35;
+        // lean must scale with the blade, or a 5cm cut blade gets its tip thrown 35cm
+        // sideways and reads as a loose clipping lying on the lawn. Tall grass is unchanged
+        // (0.66 * 0.55 ≈ the old 0.35); cut stubble now stands up.
+        float lean = aRnd.z * 0.55 * hgt;
         float gust = max(sin(uTime * 0.55 - (aOff.x + aOff.y) * 0.14), 0.0) + 0.5 * max(sin(uTime * 0.23 - aOff.x * 0.07), 0.0);
         float sway = sin(uTime * 1.35 + aRnd.y + aOff.x * 0.4) * (0.05 + 0.10 * hgt) * (1.0 + gust * 1.3) * (1.0 - cut * 0.85);
         // anticipation: tall blades shy away from the running deck just before the cut lands
@@ -350,8 +353,13 @@ export class ClipPool {
     this.pts = new THREE.Points(g, new THREE.PointsMaterial({ color: 0x9fce62, size: 0.055, sizeAttenuation: true, transparent: true, opacity: 0.95, depthWrite: false, map: dotTex(), alphaTest: 0.3 }));
     this.pts.frustumCulled = false; scene.add(this.pts);
     this.head = 0;
+    // clippings tagged for the bag get vacuumed to the mouth instead of falling to the lawn
+    this.tag = new Float32Array(max);
+    this.bagOn = false; this.bx = 0; this.by = 0; this.bz = 0;
   }
-  burst(x, z, dir, k = 3, spread = 1) {
+  setBagMouth(x, y, z) { this.bx = x; this.by = y; this.bz = z; this.bagOn = true; }
+  noBag() { this.bagOn = false; }
+  burst(x, z, dir, k = 3, spread = 1, toBag = false) {
     for (let i = 0; i < k; i++) {
       const j = this.head; this.head = (this.head + 1) % this.max;
       const a = dir + Math.PI / 2 * (Math.random() < .5 ? 1 : -1) + (Math.random() - .5) * 1.1;
@@ -359,12 +367,25 @@ export class ClipPool {
       this.pos[j * 3] = x; this.pos[j * 3 + 1] = 0.14 + Math.random() * 0.16; this.pos[j * 3 + 2] = z;
       this.vel[j * 3] = Math.sin(a) * sp; this.vel[j * 3 + 1] = 1.1 + Math.random() * 1.6; this.vel[j * 3 + 2] = Math.cos(a) * sp;
       this.life[j] = 0.55 + Math.random() * 0.5;
+      this.tag[j] = toBag ? 1 : 0;
     }
   }
   update(dt) {
     for (let j = 0; j < this.max; j++) {
       if (this.life[j] <= 0) { this.pos[j * 3 + 1] = -5; continue; }
       this.life[j] -= dt;
+      if (this.tag[j] && this.bagOn) {
+        // pulled up the chute: no gravity, no ground contact — it ends up in the bag
+        const dx = this.bx - this.pos[j * 3], dy = this.by - this.pos[j * 3 + 1], dz = this.bz - this.pos[j * 3 + 2];
+        const d = Math.hypot(dx, dy, dz);
+        if (d < 0.24) { this.life[j] = 0; this.pos[j * 3 + 1] = -5; continue; } // swallowed
+        const k = 34 / d; // unit vector × suck accel
+        this.vel[j * 3] += (dx * k - this.vel[j * 3] * 4.5) * dt;
+        this.vel[j * 3 + 1] += (dy * k - this.vel[j * 3 + 1] * 4.5) * dt;
+        this.vel[j * 3 + 2] += (dz * k - this.vel[j * 3 + 2] * 4.5) * dt;
+        this.pos[j * 3] += this.vel[j * 3] * dt; this.pos[j * 3 + 1] += this.vel[j * 3 + 1] * dt; this.pos[j * 3 + 2] += this.vel[j * 3 + 2] * dt;
+        continue;
+      }
       this.vel[j * 3 + 1] -= 7.5 * dt;
       this.pos[j * 3] += this.vel[j * 3] * dt; this.pos[j * 3 + 1] += this.vel[j * 3 + 1] * dt; this.pos[j * 3 + 2] += this.vel[j * 3 + 2] * dt;
       if (this.pos[j * 3 + 1] < 0.02) { this.pos[j * 3 + 1] = 0.02; this.vel[j * 3 + 1] = 0; this.vel[j * 3] *= .82; this.vel[j * 3 + 2] *= .82; }
