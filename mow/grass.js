@@ -328,7 +328,14 @@ function makeOverlayMaterial(tex, trackTex) {
       uniform sampler2D uMask; uniform float uWarm; uniform sampler2D uTracks; varying vec2 vUv;
       float hash(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }
       void main(){
-        vec4 m = texture2D(uMask, vUv);
+        // ⚠️ The plane's uv.y is 1 at worldZ=0 and 0 at worldZ=H (PlaneGeometry rotated -90°
+        // about X), but uMask is a DataTexture with flipY:false, so ITS row 0 is worldZ=0 —
+        // which is how the blades sample it (uv = worldPos / lot). Sampling the mask with the
+        // raw uv therefore mirrors the cut mask along Z: the bright fresh-cut paint landed at
+        // H-z instead of z, so it slid the OPPOSITE way to the mower as you mowed.
+        // uTracks stays on vUv: it is a CanvasTexture (flipY:true), so it is already correct.
+        vec2 mUv = vec2(vUv.x, 1.0 - vUv.y);
+        vec4 m = texture2D(uMask, mUv);
         float meta = m.b * 255.0;
         if (meta > 249.0) { discard; }
         float tier = mod(meta, 16.0);

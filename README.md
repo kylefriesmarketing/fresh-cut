@@ -13,6 +13,41 @@ Deploy = copy the whole folder to any static host (GitHub Pages works as-is).
 **F** high-cut lever (jungle grass needs it first) · hold **LMB** to trim ·
 **R** Pop's radio · **Z** zone list · **L** last-blade glow · **Esc** pause.
 
+## v1.6 (2026-08-09) — ⚠️ THE ROOT CAUSE: the ground overlay read the cut mask MIRRORED
+
+"The lines still move in the opposite direction of the mower." That phrasing is a mirror,
+and it was: **the ground overlay had been sampling the cut mask flipped along Z since the
+overlay was written.** Everything else in v1.3–v1.5 was real, but this was the cause of
+"doesn't line up".
+
+- `this.overlay` is a `PlaneGeometry(W,H)` rotated −90° about X, which makes its **`uv.y`
+  equal 1 at worldZ 0 and 0 at worldZ H**. But `uMask` is a `DataTexture`, and DataTexture
+  sets `flipY: false`, so **its row 0 IS worldZ 0** — which is exactly how the blades read
+  it (`texture2D(uMask, aOff / uLot)`). So the blades cut in the right place while the
+  overlay painted the fresh-cut colour at `H − z`. As you mowed forward, the bright paint
+  slid backwards.
+- Fixed by sampling the mask with `vec2 mUv = vec2(vUv.x, 1.0 - vUv.y)`. `uTracks` stays on
+  the raw `vUv` — it is a `CanvasTexture` (`flipY: true`), so it was already correct, and
+  that was verified rather than assumed.
+
+Proved with two complementary asymmetric cuts (blades hidden, so only the overlay renders):
+
+```
+cut band FAR (worldZ 11.5-13.4):  mirrored lit the NEAR rows 129/107/90/120
+                                  fixed leaves them dark      102/ 82/66/ 58
+cut band NEAR (worldZ 2.6-4.4):   fixed lights near rows 122/121/121
+                                  mirrored leaves them   99/ 99/102
+```
+
+⚠️ **Why it hid for three rounds:** every test lawn happened to be mown roughly
+symmetrically about the lot's Z centre (e.g. z 4.5–11.5 on H=15 mirrors to 3.5–10.5), so
+the mirror overlapped itself and looked plausible. **Test ground-mask orientation with a
+deliberately ASYMMETRIC cut, near one edge.** Wheel tracks were re-verified with a
+controlled A/B (clear the canvas, re-render): darkening −5/−6 luma on the near rows only,
+0 on the far rows.
+
+Verified: 24/24 jobs, 0 console errors.
+
 ## v1.5 (2026-08-09) — stripe bands now match the passes you actually drove
 
 "The bright green shading strips still don't line up with the mower as you mow."
