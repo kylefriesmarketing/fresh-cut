@@ -185,6 +185,33 @@ export function bagDump() { // the bag tips out — a soft grass whump, nothing 
   g2.gain.setValueAtTime(0, t + 0.04); g2.gain.linearRampToValueAtTime(0.16, t + 0.07); g2.gain.exponentialRampToValueAtTime(0.0001, t + 0.34);
   o.connect(g2); o.start(t + 0.04); o.stop(t + 0.4);
 }
+export function carPass(near = 1) { // a car going by out on the street — heard, never loud
+  if (!ac()) return;
+  const g = AC.createGain(); g.connect(buses.amb);
+  const n = noiseSrc();
+  const bp = AC.createBiquadFilter(); bp.type = 'bandpass'; bp.Q.value = 0.7;
+  const t = AC.currentTime;
+  bp.frequency.setValueAtTime(820, t);
+  bp.frequency.exponentialRampToValueAtTime(300, t + 1.8);   // the doppler drop as it goes past
+  n.connect(bp); bp.connect(g);
+  g.gain.setValueAtTime(0, t);
+  g.gain.linearRampToValueAtTime(0.055 * near, t + 0.65);
+  g.gain.exponentialRampToValueAtTime(0.0001, t + 2.1);
+  n.start(t); n.stop(t + 2.3);
+}
+export function jingle() { // the ice cream truck, a couple of streets away
+  if (!ac()) return;
+  [1047, 1319, 1568, 1319, 1047, 880, 1047].forEach((f, i) => {
+    const t = AC.currentTime + i * 0.33;
+    const g = AC.createGain(); g.connect(buses.amb);
+    const o = AC.createOscillator(); o.type = 'triangle'; o.frequency.value = f;
+    const lp = AC.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 1300;
+    o.connect(lp); lp.connect(g);
+    g.gain.setValueAtTime(0, t); g.gain.linearRampToValueAtTime(0.042, t + 0.02);
+    g.gain.exponentialRampToValueAtTime(0.0001, t + 0.48);
+    o.start(t); o.stop(t + 0.55);
+  });
+}
 export function squeak() { // gnome / toy bump
   if (!ac()) return;
   const g = AC.createGain(); g.connect(buses.ui);

@@ -13,6 +13,47 @@ Deploy = copy the whole folder to any static host (GitHub Pages works as-is).
 **F** high-cut lever (jungle grass needs it first) · hold **LMB** to trim ·
 **R** Pop's radio · **Z** zone list · **L** last-blade glow · **Esc** pause.
 
+## v1.7 (2026-08-10) — the neighbourhood: a street that is lived on
+
+New module **`mow/street.js`** owns everything beyond the fence. Kyle's brief: a lived-in
+street (not a busy road), a day that advances while you mow, richer sky, and all four car
+behaviours.
+
+- **Houses** — five across the street, each with varied body/roof colours, a gable, porch
+  with posts and awning, shuttered windows, sills, a coloured front door, shrubs, a
+  driveway, a garden path and a kerbside mailbox. Their window and porch-lamp materials are
+  pushed into `world.windows`, so `applyLightPreset` lights the whole street at golden hour
+  for free — no new machinery.
+- **Traffic** — a recycled 5-car pool (sedan/pickup/van), near lane runs +x, far lane −x.
+  Measured ~one car every 8 s on a normal job, never more than 2 on screen. Plus **parked
+  cars** in drives and at the kerb, a **rare special** (ice cream truck with a music-box
+  jingle / mail van / school bus — all three appear across the campaign), and **one
+  authored arrival per job**: a car slows, turns into a drive on a bezier, parks facing the
+  house, and a neighbour walks to the porch and goes in.
+- **People** — a dog walker and a kid on a bike pass along the sidewalk with real leg/wheel
+  motion, and someone sits out on a porch all afternoon.
+- **Sky** — 6-stop gradient, **three cloud layers** (low/mid/high cirrus) at their own
+  heights, scales, opacities and drift speeds so the sky has parallax, and a flock of birds
+  that crosses now and then.
+- **The day advances while you mow** — `warmTarget` now tracks job *progress* (not the
+  clock, so the arc lands however long you take) up to **0.55**, and the sun disc visibly
+  sinks and grows along the light's own arc. The full golden hour is still the finish's to
+  give: completion sets it to 1.
+
+⚠️ **The street is view-only and updates from `Game.frame()`, never `Game.update()`** —
+verified by running 60 sim-seconds with no frames and confirming not one car moved. Headless
+jobs never run a car, which is why the 24-job battery still takes ~1 s.
+⚠️ Street pieces carry a little emissive of their own colour (`brighten()` in street.js).
+The sun is aimed at the lot from +x/−z, so every street-facing surface over there gets
+ambient only and rendered as a grey slab. Moving the sun would change the whole game's look;
+lifting the background is the cheap fix. Meshes tagged `userData.keepMat` are skipped so the
+window materials stay under `applyLightPreset`'s control.
+- Quiet where it should be: the **finale** (`def.finale`) drops to ~2 cars in 90 s with no
+  special, no pedestrians and no arrival, keeping invariant 5. Night jobs get half traffic.
+  `def.street = false` disables the lot entirely.
+- Cost: **0.77 ms/frame** (~5% of a 60 fps budget), measured with the street group toggled.
+  24/24 jobs, 0 console errors.
+
 ## v1.6 (2026-08-09) — ⚠️ THE ROOT CAUSE: the ground overlay read the cut mask MIRRORED
 
 "The lines still move in the opposite direction of the mower." That phrasing is a mirror,
@@ -188,6 +229,10 @@ clouds; all roofs rebuilt as true gables. Full battery re-verified: 24/24.
 - `mow/props.js` — procedural prop kit (~25 builders) + yard composer (ground canvas,
   fence, surround, sky, lights). Props register colliders, no-grass footprints, and
   trim rings (mower-blocked, trimmer-only).
+- `mow/street.js` — everything beyond the fence: the five neighbour houses with their
+  drives and mailboxes, traffic, parked cars, the arriving neighbour, sidewalk people and
+  the birds. Pure view: built by game.js after the yard, ticked from `Game.frame()` only,
+  and it never touches the mask, the player, collision or the save.
 - `mow/game.js` — sim: movement/collision, tools, load→engine, zones/dings/mercy,
   discoveries (with off-grass relocation), rabbit/dog/fireflies, golden hour.
 - `mow/yards.js` — ALL content as data. A job ≈ 40 lines. Daily Lawn generator.

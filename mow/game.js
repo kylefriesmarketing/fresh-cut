@@ -4,6 +4,7 @@
 import * as THREE from 'three';
 import { GrassField, ClipPool, CUT, HIGH, M_NOGRASS, M_WCLUMP, M_TRIM, mulberry, dotTex } from './grass.js';
 import { buildYard, makeMower, makeTrimmer, discoveryMesh } from './props.js';
+import { buildStreet } from './street.js';
 import { jobDiscoveries } from './yards.js';
 import * as sfx from './sfx.js';
 
@@ -32,6 +33,9 @@ export class Game {
     this.zoneNames = [];
     (def.zones || []).forEach((z, i) => { g.zoneRect(z.x, z.z, z.w, z.h, i); this.zoneNames.push(z.name); });
     this.world = buildYard(scene, def, g, this.quality);
+    // the street goes up after the yard so its windows join world.windows before the
+    // light preset runs — then they warm with the house's at golden hour, for free
+    this.world.street = buildStreet(scene, def, this.world, this.quality);
     g.finalize();
     this.clips = new ClipPool(scene, this.quality === 'low' ? 400 : 900);
 
@@ -216,6 +220,10 @@ export class Game {
     if (this._spin === undefined) { this._spin = []; this.world.group.traverse(o => { if (o.userData.spin) this._spin.push(o); }); }
     for (const s of this._spin) s.rotation.z += dt * s.userData.spin;
 
+    // The afternoon moves while you work: the light walks toward gold as the yard comes in.
+    // Driven by PROGRESS, not the clock, so the arc always lands however long you take —
+    // and it stops well short of 1, because the full golden hour is the finish's to give.
+    if (!this.done) this.warmTarget = Math.min(0.55, this.grass.pct() * 0.62);
     // golden hour lerp
     if (this.warm !== this.warmTarget) {
       this.warm += Math.sign(this.warmTarget - this.warm) * Math.min(Math.abs(this.warmTarget - this.warm), dt * 0.14);
@@ -223,7 +231,7 @@ export class Game {
       this.grass.setSun(this.warm);
     }
     // clouds drift like a long afternoon
-    if (this.world.clouds) for (const cl of this.world.clouds) { cl.position.x += dt * 0.35; if (cl.position.x > this.def.lot.w / 2 + 95) cl.position.x = -this.def.lot.w / 2 - 95; }
+    if (this.world.clouds) for (const cl of this.world.clouds) { cl.position.x += dt * (cl.userData.spd || 0.35); if (cl.position.x > this.def.lot.w / 2 + 110) cl.position.x = -this.def.lot.w / 2 - 110; }
     // the chute mouth travels with the mower, so clippings already in the air keep homing
     const bl = this.mowerG.userData.bagLocal;
     if (mowing && bl) {
@@ -263,6 +271,8 @@ export class Game {
       this.trimG.rotation.y = p.yaw;
       this.trimG.traverse(o => { if (o.userData.line) o.rotation.y += dt * (this.trimming ? 55 : 4); });
     }
+    // the street lives on the render frame only — headless jobs never run a car
+    if (this.world.street) this.world.street.update(dt, sfx);
     // last blade pulse
     this.lbT += dt;
     for (const s of this.lbSprites) { const k = 0.8 + Math.sin(this.lbT * 3 + s.userData.ph) * 0.25; s.scale.set(k, k, 1); }
@@ -369,6 +379,11 @@ function applyLightPreset(world, scene, kind, warm) {
   }
   if (world.sunDisc) {
     world.sunDisc.material.color.set(lerpC(0xfff6d8, 0xffb864, warm));
+    // the sun visibly sinks as the afternoon goes — same arc the directional light walks
+    const LW = world.sun.target.position.x * 2, LH = world.sun.target.position.z * 2;
+    world.sunDisc.position.set(LW / 2 + 62, 52 - warm * 26, LH / 2 - 66 + warm * 12);
+    world.sunDisc.lookAt(LW / 2, 0, LH / 2);
+    world.sunDisc.scale.setScalar(1 + warm * 0.35);
     if (kind === 'night') world.sunDisc.visible = false;
   }
   if (kind === 'night') {

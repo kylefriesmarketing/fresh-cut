@@ -10,14 +10,14 @@ export function mat(hex, opts = {}) {
   if (!MATS[k]) MATS[k] = new THREE.MeshLambertMaterial({ color: hex, ...opts });
   return MATS[k];
 }
-function box(w, h, d, hex, x = 0, y = 0, z = 0) { const m = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), mat(hex)); m.position.set(x, y, z); m.castShadow = true; return m; }
-function cyl(r1, r2, h, hex, x = 0, y = 0, z = 0, seg = 10) { const m = new THREE.Mesh(new THREE.CylinderGeometry(r1, r2, h, seg), mat(hex)); m.position.set(x, y, z); m.castShadow = true; return m; }
-function sph(r, hex, x = 0, y = 0, z = 0, seg = 9) { const m = new THREE.Mesh(new THREE.SphereGeometry(r, seg, Math.max(6, seg - 2)), mat(hex)); m.position.set(x, y, z); m.castShadow = true; return m; }
-function cone(r, h, hex, x = 0, y = 0, z = 0, seg = 9) { const m = new THREE.Mesh(new THREE.ConeGeometry(r, h, seg), mat(hex)); m.position.set(x, y, z); m.castShadow = true; return m; }
+export function box(w, h, d, hex, x = 0, y = 0, z = 0) { const m = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), mat(hex)); m.position.set(x, y, z); m.castShadow = true; return m; }
+export function cyl(r1, r2, h, hex, x = 0, y = 0, z = 0, seg = 10) { const m = new THREE.Mesh(new THREE.CylinderGeometry(r1, r2, h, seg), mat(hex)); m.position.set(x, y, z); m.castShadow = true; return m; }
+export function sph(r, hex, x = 0, y = 0, z = 0, seg = 9) { const m = new THREE.Mesh(new THREE.SphereGeometry(r, seg, Math.max(6, seg - 2)), mat(hex)); m.position.set(x, y, z); m.castShadow = true; return m; }
+export function cone(r, h, hex, x = 0, y = 0, z = 0, seg = 9) { const m = new THREE.Mesh(new THREE.ConeGeometry(r, h, seg), mat(hex)); m.position.set(x, y, z); m.castShadow = true; return m; }
 
 
 // gable roof: two sloped panels + end gables + ridge cap (box normals light cleanly)
-function gableRoof(w, d, rise, roofC, gableC) {
+export function gableRoof(w, d, rise, roofC, gableC) {
   const g = new THREE.Group();
   const half = d / 2 + 0.25, slope = Math.hypot(half, rise), pitch = Math.atan2(rise, half);
   for (const s of [-1, 1]) {
@@ -327,14 +327,8 @@ export function buildYard(scene, def, grass, quality) {
   const apron = new THREE.Mesh(new THREE.PlaneGeometry(W + 60, 60), mat(0x5c8747)); apron.rotation.x = -Math.PI / 2; apron.position.set(W / 2, -0.03, H + 30); sur.add(apron);
   const apron2 = new THREE.Mesh(new THREE.PlaneGeometry(W + 60, 24), mat(0x5c8747)); apron2.rotation.x = -Math.PI / 2; apron2.position.set(W / 2, -0.03, -18.8); sur.add(apron2);
   for (const sx of [-1, 1]) { const side = new THREE.Mesh(new THREE.PlaneGeometry(30, H + 90), mat(0x5c8747)); side.rotation.x = -Math.PI / 2; side.position.set(sx < 0 ? -15.2 : W + 15.2, -0.03, H / 2 - 10); sur.add(side); }
-  const nrng = mulberry((def.seed || 42) * 3 + 1);
-  for (let i = 0; i < 5; i++) { // houses across the street
-    const hw = 5 + nrng() * 3, hx = -12 + i * (W + 24) / 5 + nrng() * 3;
-    const hh = 3 + nrng() * 1.4;
-    const hb = box(hw, hh, 4.5, [0xd8cbb4, 0xc9d4dd, 0xd4c2c2, 0xcfd8c0][i % 4], hx, hh / 2, -11.5); sur.add(hb);
-    const hr = gableRoof(hw, 4.5, 1.7, 0x6b5844, [0xd8cbb4, 0xc9d4dd, 0xd4c2c2, 0xcfd8c0][i % 4]); hr.position.set(hx, hh, -11.5); sur.add(hr);
-    const tr = PROPS.tree({ s: 0.9 + nrng() * 0.5, seed: i * 9 + 2 }); tr.g.position.set(hx + hw / 2 + 1.5, 0, -9 - nrng() * 3); sur.add(tr.g);
-  }
+  // the neighbourhood across the street (houses, drives, traffic, people) is street.js —
+  // game.js builds it right after this, so it can push its windows into world.windows
   // water tower on the hill
   const wt = new THREE.Group();
   wt.add(cyl(1.6, 1.9, 2.6, 0x9db3bd, 0, 9.4, 0, 10));
@@ -435,19 +429,34 @@ export function buildYard(scene, def, grass, quality) {
   // --- sky + light ---
   const sc = document.createElement('canvas'); sc.width = 16; sc.height = 256; const sx2 = sc.getContext('2d');
   const gr = sx2.createLinearGradient(0, 0, 0, 256);
-  gr.addColorStop(0, '#79b7d6'); gr.addColorStop(0.55, '#bfe0ee'); gr.addColorStop(0.78, '#e8ecd2'); gr.addColorStop(1, '#f4e6c0');
+  gr.addColorStop(0, '#5d9fc8'); gr.addColorStop(0.22, '#79b7d6'); gr.addColorStop(0.48, '#a9d4e8');
+  gr.addColorStop(0.66, '#cfe6ee'); gr.addColorStop(0.82, '#e8ecd2'); gr.addColorStop(1, '#f6e8c2');
   sx2.fillStyle = gr; sx2.fillRect(0, 0, 16, 256);
   const skyTex = new THREE.CanvasTexture(sc); skyTex.colorSpace = THREE.SRGBColorSpace;
   const sky = new THREE.Mesh(new THREE.SphereGeometry(160, 20, 12), new THREE.MeshBasicMaterial({ map: skyTex, side: THREE.BackSide, fog: false }));
   sky.position.set(W / 2, 0, H / 2); world.group.add(sky); world.sky = sky;
-  // clouds (game drifts these)
+  // clouds — three layers at different heights, sizes and speeds (game drifts them by
+  // userData.spd, so the sky has parallax instead of one sheet sliding along)
   world.clouds = [];
-  for (let i = 0; i < 6; i++) {
-    const cl = new THREE.Group(); const crng = mulberry(i * 31 + 7);
-    for (let j = 0; j < 4; j++) cl.add(new THREE.Mesh(new THREE.SphereGeometry(3 + crng() * 4, 8, 6), new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.85, fog: false })));
-    cl.children.forEach((m, j) => m.position.set(j * 4 - 6 + crng() * 2, crng() * 1.4, crng() * 2));
-    cl.position.set(W / 2 - 60 + i * 26, 26 + crng() * 12, H / 2 - 70 + crng() * 40);
-    cl.scale.y = 0.45; world.group.add(cl); world.clouds.push(cl);
+  const LAYERS = [
+    { n: 5, y: 20, yv: 6, s: 1.0, op: 0.88, spd: 0.42, puff: 4 },   // low, fat, quickest
+    { n: 5, y: 34, yv: 10, s: 1.5, op: 0.72, spd: 0.24, puff: 4 },  // mid
+    { n: 4, y: 52, yv: 12, s: 2.4, op: 0.38, spd: 0.11, puff: 5 },  // high thin cirrus
+  ];
+  let ci = 0;
+  for (const L of LAYERS) for (let i = 0; i < L.n; i++, ci++) {
+    const cl = new THREE.Group(); const crng = mulberry(ci * 31 + 7);
+    const m = new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: L.op, fog: false, depthWrite: false });
+    for (let j = 0; j < L.puff; j++) {
+      const p = new THREE.Mesh(new THREE.SphereGeometry((2.4 + crng() * 3.6) * L.s, 8, 6), m);
+      p.position.set(j * 4 * L.s - 6 * L.s + crng() * 2, crng() * 1.4, crng() * 2 * L.s);
+      cl.add(p);
+    }
+    cl.position.set(W / 2 - 90 + ci * 17 + crng() * 10, L.y + crng() * L.yv, H / 2 - 80 + crng() * 60);
+    cl.scale.y = L.s > 2 ? 0.2 : 0.45;
+    cl.userData.spd = L.spd * (0.8 + crng() * 0.5);
+    cl.renderOrder = -1;
+    world.group.add(cl); world.clouds.push(cl);
   }
   const sunDisc = new THREE.Mesh(new THREE.CircleGeometry(7, 24), new THREE.MeshBasicMaterial({ color: 0xfff6d8, fog: false, transparent: true, opacity: 0.95 }));
   sunDisc.position.set(W / 2 + 62, 52, H / 2 - 66); sunDisc.lookAt(W / 2, 0, H / 2); world.group.add(sunDisc); world.sunDisc = sunDisc;
