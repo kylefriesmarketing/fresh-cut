@@ -13,6 +13,28 @@ Deploy = copy the whole folder to any static host (GitHub Pages works as-is).
 **F** high-cut lever (jungle grass needs it first) · hold **LMB** to trim ·
 **R** Pop's radio · **Z** zone list · **L** last-blade glow · **Esc** pause.
 
+## v1.12 (2026-08-11) — `mow/terrain.js`: the ground has shape
+
+The foundation for the new campaign of unusual maps. A lot can now have mounds, hollows,
+banks and a tilt, and everything standing on it reads its height from one place.
+
+**Two rules make this safe to drop into a shipped game:**
+1. **`def.terrain` absent → `heightAt()` is a constant 0 and `enabled` is false.** Every
+   existing map stays exactly flat and pays nothing. Verified: **24/24 existing maps still
+   flat**, 24/24 still complete, 0 console errors.
+2. **Height tapers to zero at the lot boundary**, so the fence, the street and the whole
+   neighbourhood beyond never need to know terrain exists. It also levels off under the
+   house pad and any laid path, with a soft skirt, so buildings don't sit on a slant.
+
+Features: `mound`, `bowl`, `ridge` (a bank/levee along a line), `step` (a terrace), `slope`.
+
+What follows the ground: the ground mesh and the cut overlay are subdivided and draped
+(2 segments/m); **grass blades and flowers bake their height into a per-instance `aY`
+attribute** — they're static, so this costs nothing at runtime and can never drift (max
+error measured **0**); props stand at their ground height; the player has a real `p.y`;
+the camera rides it; clippings fall to the ground they came from; and the mower **lies
+along the slope**, pitching from the gradient ahead and rolling from the gradient across.
+
 ## v1.11 (2026-08-11) — `mow/hood.js`: the world on all four sides
 
 street.js owned the road in front; everything else was bare green plane. Now every lot has

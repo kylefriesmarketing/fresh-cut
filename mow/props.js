@@ -3,6 +3,7 @@
 // Every prop registers collision circles; some claim no-grass footprints and trim rings.
 import * as THREE from 'three';
 import { mulberry } from './grass.js';
+import { drapePlane } from './terrain.js';
 
 const MATS = {};
 export function mat(hex, opts = {}) {
@@ -316,7 +317,11 @@ export function buildYard(scene, def, grass, quality) {
     grass.noGrassRect(p.x, p.z, p.w, p.h);
   }
   const gtex = new THREE.CanvasTexture(c); gtex.colorSpace = THREE.SRGBColorSpace;
-  const ground = new THREE.Mesh(new THREE.PlaneGeometry(W, H), new THREE.MeshLambertMaterial({ map: gtex }));
+  const T = grass.terrain && grass.terrain.enabled ? grass.terrain : null;
+  const groundGeo = T
+    ? drapePlane(new THREE.PlaneGeometry(W, H, Math.ceil(W * 2), Math.ceil(H * 2)), T, W, H)
+    : new THREE.PlaneGeometry(W, H);
+  const ground = new THREE.Mesh(groundGeo, new THREE.MeshLambertMaterial({ map: gtex }));
   ground.rotation.x = -Math.PI / 2; ground.position.set(W / 2, 0, H / 2); ground.receiveShadow = true;
   world.group.add(ground); world.ground = ground;
 
@@ -419,7 +424,7 @@ export function buildYard(scene, def, grass, quality) {
   for (const p of def.props || []) {
     const b = PROPS[p.k]; if (!b) continue;
     const built = b(p.o || {});
-    built.g.position.set(p.x, 0, p.z);
+    built.g.position.set(p.x, T ? T.heightAt(p.x, p.z) : 0, p.z);   // props stand ON the ground
     if (p.rot) built.g.rotation.y = p.rot;
     if (p.s) built.g.scale.setScalar(p.s);
     world.group.add(built.g);

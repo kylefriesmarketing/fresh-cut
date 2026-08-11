@@ -6,6 +6,7 @@
 //                          bit5 (32) trim ring (mower blocked), 255 = no grass here
 // All satisfaction flows from this array. Zone counting is incremental — never a full rescan.
 import * as THREE from 'three';
+import { drapePlane } from './terrain.js';
 
 export const TPM = 8;                 // texels per meter (12.5 cm)
 const CHUNK = 4;                      // meters per blade chunk
@@ -116,6 +117,7 @@ export class GrassField {
     this.tex.needsUpdate = true;
   }
   _buildBlades() {
+    const T = this.terrain && this.terrain.enabled ? this.terrain : null;
     const dens = DENSITY[this.quality] || DENSITY.med;
     const mat = makeBladeMaterial(this.tex, this);
     this.bladeMat = mat;
@@ -127,13 +129,14 @@ export class GrassField {
       const x0 = i * CHUNK, z0 = j * CHUNK;
       const w = Math.min(CHUNK, this.W - x0), h = Math.min(CHUNK, this.H - z0);
       const count = Math.floor(w * h * dens);
-      const offs = new Float32Array(count * 2), rnds = new Float32Array(count * 4);
+      const offs = new Float32Array(count * 2), rnds = new Float32Array(count * 4), ys = new Float32Array(count);
       let put = 0;
       for (let k = 0; k < count; k++) {
         const x = x0 + rng() * w, z = z0 + rng() * h;
         const tx = Math.floor(x * TPM), tz = Math.floor(z * TPM);
         if (!this.inb(tx, tz) || this.mask[this.idx(tx, tz) * 4 + 2] === M_NOGRASS) continue;
         offs[put * 2] = x; offs[put * 2 + 1] = z;
+        ys[put] = T ? T.heightAt(x, z) : 0;   // blades are static, so bake the ground height in
         rnds[put * 4] = rng(); rnds[put * 4 + 1] = rng() * 6.283; rnds[put * 4 + 2] = rng() * 2 - 1; rnds[put * 4 + 3] = rng();
         put++;
       }
@@ -141,15 +144,19 @@ export class GrassField {
       const g = new THREE.InstancedBufferGeometry();
       g.index = base.index; g.attributes.position = base.attributes.position; g.attributes.uv = base.attributes.uv;
       g.setAttribute('aOff', new THREE.InstancedBufferAttribute(offs.subarray(0, put * 2), 2));
+      g.setAttribute('aY', new THREE.InstancedBufferAttribute(ys.subarray(0, put), 1));
       g.setAttribute('aRnd', new THREE.InstancedBufferAttribute(rnds.subarray(0, put * 4), 4));
       g.instanceCount = put;
-      g.boundingSphere = new THREE.Sphere(new THREE.Vector3(x0 + w / 2, 0.35, z0 + h / 2), Math.hypot(w, h) / 2 + 1.2);
+      g.boundingSphere = new THREE.Sphere(new THREE.Vector3(x0 + w / 2, 0.35, z0 + h / 2), Math.hypot(w, h) / 2 + 1.2 + (T ? T.maxY : 0));
       const m = new THREE.Mesh(g, mat); m.frustumCulled = true;
       this.group.add(m); this.chunks.push(m);
     }
     this._buildFlowers();
-    // ground overlay: mask-driven wrongness + stripes, readable at any distance
-    const og = new THREE.PlaneGeometry(this.W, this.H);
+    // ground overlay: mask-driven wrongness + stripes, readable at any distance.
+    // On shaped ground it must be subdivided and draped, or the stripes float over hollows.
+    const og = T
+      ? drapePlane(new THREE.PlaneGeometry(this.W, this.H, Math.ceil(this.W * 2), Math.ceil(this.H * 2)), T, this.W, this.H)
+      : new THREE.PlaneGeometry(this.W, this.H);
     const om = makeOverlayMaterial(this.tex, this.trackTex, this);
     this.overlay = new THREE.Mesh(og, om);
     this.overlay.rotation.x = -Math.PI / 2;
@@ -163,9 +170,10 @@ export class GrassField {
   _buildFlowers() {
     const dens = FLOWER_DENS[this.quality] ?? FLOWER_DENS.med;
     if (!dens) return;
+    const T = this.terrain && this.terrain.enabled ? this.terrain : null;
     const rng = mulberry(90210);
     const tries = Math.floor(this.W * this.H * dens * 2.2);
-    const offs = new Float32Array(tries * 2), rnds = new Float32Array(tries * 4);
+    const offs = new Float32Array(tries * 2), rnds = new Float32Array(tries * 4), ys = new Float32Array(tries);
     let put = 0;
     for (let k = 0; k < tries; k++) {
       const x = rng() * this.W, z = rng() * this.H;
@@ -174,6 +182,7 @@ export class GrassField {
       const meta = this.mask[this.idx(tx, tz) * 4 + 2];
       if (meta === M_NOGRASS || (meta & 15) < 2) continue;   // only stands in real growth
       offs[put * 2] = x; offs[put * 2 + 1] = z;
+      ys[put] = T ? T.heightAt(x, z) : 0;
       rnds[put * 4] = 0.22 + rng() * 0.2;      // height
       rnds[put * 4 + 1] = rng() * 6.283;       // yaw
       rnds[put * 4 + 2] = Math.floor(rng() * 3); // which flower
@@ -185,9 +194,10 @@ export class GrassField {
     const g = new THREE.InstancedBufferGeometry();
     g.index = base.index; g.attributes.position = base.attributes.position; g.attributes.uv = base.attributes.uv;
     g.setAttribute('aOff', new THREE.InstancedBufferAttribute(offs.subarray(0, put * 2), 2));
+    g.setAttribute('aY', new THREE.InstancedBufferAttribute(ys.subarray(0, put), 1));
     g.setAttribute('aRnd', new THREE.InstancedBufferAttribute(rnds.subarray(0, put * 4), 4));
     g.instanceCount = put;
-    g.boundingSphere = new THREE.Sphere(new THREE.Vector3(this.W / 2, 0.3, this.H / 2), Math.hypot(this.W, this.H) / 2 + 1);
+    g.boundingSphere = new THREE.Sphere(new THREE.Vector3(this.W / 2, 0.3, this.H / 2), Math.hypot(this.W, this.H) / 2 + 1 + (T ? T.maxY : 0));
     this.flowerCount = put;
     this.flowers = new THREE.Mesh(g, makeFlowerMaterial(this.tex, flowerAtlas(), this));
     this.flowers.frustumCulled = false;
@@ -318,7 +328,7 @@ function makeBladeMaterial(tex, F) {
     uniforms: { uMask: { value: tex }, uLot: F.uLotV, uTime: F.uTime, uWarm: F.uWarm, uCloudAmt: F.uCloudAmt, uMow: { value: new THREE.Vector3(-99, -99, 0) } },
     side: THREE.DoubleSide,
     vertexShader: `
-      attribute vec2 aOff; attribute vec4 aRnd;
+      attribute vec2 aOff; attribute vec4 aRnd; attribute float aY;
       uniform sampler2D uMask; uniform vec2 uLot; uniform float uTime; uniform vec3 uMow;
       varying float vShade; varying float vTone; varying float vTip; varying float vTier; varying float vCut;
       varying float vCloud;
@@ -362,7 +372,7 @@ function makeBladeMaterial(tex, F) {
         vec3 p;
         p.x = aOff.x + (position.x * w) * c + y * y * (lean + sway) * s + y * y * sway * 0.6 + y * y * shy * shyDir.x * 0.9;
         p.z = aOff.y - (position.x * w) * s + y * y * (lean + sway) * c + y * y * shy * shyDir.y * 0.9;
-        p.y = y * hgt;
+        p.y = y * hgt + aY;
         gl_Position = projectionMatrix * modelViewMatrix * vec4(p, 1.0);
       }`,
     fragmentShader: `
@@ -431,7 +441,7 @@ function makeFlowerMaterial(mask, atlas, F) {
     uniforms: { uMask: { value: mask }, uAtlas: { value: atlas }, uLot: F.uLotV, uTime: F.uTime, uWarm: F.uWarm, uCloudAmt: F.uCloudAmt },
     side: THREE.DoubleSide, transparent: false,
     vertexShader: `
-      attribute vec2 aOff; attribute vec4 aRnd;
+      attribute vec2 aOff; attribute vec4 aRnd; attribute float aY;
       uniform sampler2D uMask; uniform vec2 uLot; uniform float uTime;
       varying vec2 vUv; varying float vCloud;
       ${CLOUD_GLSL}
@@ -453,7 +463,7 @@ function makeFlowerMaterial(mask, atlas, F) {
         vec3 w;
         w.x = aOff.x + (p.x * cy - p.z * sy) + yy * sway;
         w.z = aOff.y + (p.x * sy + p.z * cy) + yy * sway * 0.5;
-        w.y = p.y;
+        w.y = p.y + aY;
         vUv = vec2((uv.x + aRnd.z) / 3.0, uv.y);
         vCloud = cloudShade(aOff, uTime);
         gl_Position = projectionMatrix * modelViewMatrix * vec4(w, 1.0);
@@ -536,16 +546,18 @@ export class ClipPool {
     this.head = 0;
     // clippings tagged for the bag get vacuumed to the mouth instead of falling to the lawn
     this.tag = new Float32Array(max);
+    this.ground = new Float32Array(max);   // the ground height each clipping fell from
     this.bagOn = false; this.bx = 0; this.by = 0; this.bz = 0;
   }
   setBagMouth(x, y, z) { this.bx = x; this.by = y; this.bz = z; this.bagOn = true; }
   noBag() { this.bagOn = false; }
-  burst(x, z, dir, k = 3, spread = 1, toBag = false) {
+  burst(x, z, dir, k = 3, spread = 1, toBag = false, y0 = 0) {
     for (let i = 0; i < k; i++) {
       const j = this.head; this.head = (this.head + 1) % this.max;
       const a = dir + Math.PI / 2 * (Math.random() < .5 ? 1 : -1) + (Math.random() - .5) * 1.1;
       const sp = (0.9 + Math.random() * 1.8) * spread;
-      this.pos[j * 3] = x; this.pos[j * 3 + 1] = 0.14 + Math.random() * 0.16; this.pos[j * 3 + 2] = z;
+      this.ground[j] = y0;
+      this.pos[j * 3] = x; this.pos[j * 3 + 1] = y0 + 0.14 + Math.random() * 0.16; this.pos[j * 3 + 2] = z;
       this.vel[j * 3] = Math.sin(a) * sp; this.vel[j * 3 + 1] = 1.1 + Math.random() * 1.6; this.vel[j * 3 + 2] = Math.cos(a) * sp;
       this.life[j] = 0.55 + Math.random() * 0.5;
       this.tag[j] = toBag ? 1 : 0;
@@ -569,7 +581,8 @@ export class ClipPool {
       }
       this.vel[j * 3 + 1] -= 7.5 * dt;
       this.pos[j * 3] += this.vel[j * 3] * dt; this.pos[j * 3 + 1] += this.vel[j * 3 + 1] * dt; this.pos[j * 3 + 2] += this.vel[j * 3 + 2] * dt;
-      if (this.pos[j * 3 + 1] < 0.02) { this.pos[j * 3 + 1] = 0.02; this.vel[j * 3 + 1] = 0; this.vel[j * 3] *= .82; this.vel[j * 3 + 2] *= .82; }
+      const floor = this.ground[j] + 0.02;
+      if (this.pos[j * 3 + 1] < floor) { this.pos[j * 3 + 1] = floor; this.vel[j * 3 + 1] = 0; this.vel[j * 3] *= .82; this.vel[j * 3 + 2] *= .82; }
     }
     this.pts.geometry.attributes.position.needsUpdate = true;
   }

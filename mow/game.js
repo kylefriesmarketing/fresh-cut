@@ -7,6 +7,7 @@ import { buildYard, makeMower, makeTrimmer, discoveryMesh } from './props.js';
 import { buildStreet } from './street.js';
 import { buildLife } from './life.js';
 import { buildHood } from './hood.js';
+import { makeTerrain } from './terrain.js';
 import { jobDiscoveries } from './yards.js';
 import * as sfx from './sfx.js';
 
@@ -24,8 +25,12 @@ export class Game {
     this.gearKey = def.gearLock || opts.gear || 'push';
     this.gear = GEARS[this.gearKey];
 
-    // grass first, then the yard (props paint no-grass + trim rings), then finalize
+    // terrain first: it is pure maths from the def, and everything else stands on it.
+    // Maps without def.terrain get a constant-zero heightAt, so they stay exactly flat.
+    this.terrain = makeTerrain(def);
+    // grass next, then the yard (props paint no-grass + trim rings), then finalize
     const g = this.grass = new GrassField(scene, def.lot.w, def.lot.h, this.quality);
+    g.terrain = this.terrain;
     for (const t of def.tiers || []) {
       if (t.t === 'base') g.tierRect(0, 0, def.lot.w, def.lot.h, t.tier);
       else if (t.t === 'rect') g.tierRect(t.x, t.z, t.w, t.h, t.tier);
@@ -46,7 +51,8 @@ export class Game {
     // player
     const gate = this.world.gate || { x: 3, w: 1.4 };
     // pitch starts in mowing posture — eyes on the grass ahead of the deck, mower in frame
-    this.p = { x: gate.x + (gate.w || 1.4) / 2, z: 2.0, yaw: 0, pitch: -0.42, vx: 0, vz: 0 };
+    this.p = { x: gate.x + (gate.w || 1.4) / 2, z: 2.0, y: 0, yaw: 0, pitch: -0.42, vx: 0, vz: 0 };
+    this.p.y = this.terrain.heightAt(this.p.x, this.p.z);
     this.tool = 'mow'; this.highCut = false; this.load = 0; this.speedF = 0;
     this.mowerG = makeMower(this.gearKey); scene.add(this.mowerG);
     this.mowerOff = this.gearKey === 'rider' ? 0.4 : 0.86; // how far ahead of the player the mower rides
@@ -160,13 +166,14 @@ export class Game {
     }
     this.dist += Math.hypot(nx - p.x, nz - p.z);
     p.x = nx; p.z = nz;
+    p.y = this.terrain.heightAt(p.x, p.z);   // 0 on every flat map
     this.bumpT -= dt;
 
     // stamp
     if (mowing && moving && this.speedF > 0.25) {
       const mx = p.x + Math.sin(p.yaw) * this.deckAt, mz = p.z + Math.cos(p.yaw) * this.deckAt;
       const res = this.grass.stamp(mx, mz, this.gear.swath / 2, 'mow', this.highCut, p.yaw);
-      if (res.fresh > 0 || res.spots.length) for (const [sx, szz] of res.spots) this.clips.burst(sx, szz, p.yaw, 2, 1, true); // true = up the chute, into the bag
+      if (res.fresh > 0 || res.spots.length) for (const [sx, szz] of res.spots) this.clips.burst(sx, szz, p.yaw, 2, 1, true, this.terrain.heightAt(sx, szz)); // true = up the chute, into the bag
       // wheel tracks pressed into the lawn
       const side = this.gear.swath * 0.46, cy = Math.cos(p.yaw), sy = Math.sin(p.yaw);
       this.grass.stampTrack(mx + cy * side, mz - sy * side);
@@ -187,7 +194,7 @@ export class Game {
       const tx = p.x + Math.sin(p.yaw) * 1.25, tz = p.z + Math.cos(p.yaw) * 1.25;
       const res = this.grass.stamp(tx, tz, 0.32, 'trim', false, p.yaw);
       this.trimEat += (Math.min(1, res.fresh / 5) - this.trimEat) * 0.25;
-      if (res.spots.length) for (const [sx, szz] of res.spots) this.clips.burst(sx, szz, p.yaw, 2, 0.5);
+      if (res.spots.length) for (const [sx, szz] of res.spots) this.clips.burst(sx, szz, p.yaw, 2, 0.5, false, this.terrain.heightAt(sx, szz));
       if (!this.trimming) { this.trimming = true; sfx.trimmerStart(); }
       sfx.trimmerSet(this.trimEat);
     } else if (this.trimming) { this.trimming = false; sfx.trimmerStop(); }
@@ -264,7 +271,7 @@ export class Game {
     const bl = this.mowerG.userData.bagLocal;
     if (mowing && bl) {
       const fz = this.mowerOff + bl.z;
-      this.clips.setBagMouth(p.x + Math.sin(p.yaw) * fz, bl.y, p.z + Math.cos(p.yaw) * fz);
+      this.clips.setBagMouth(p.x + Math.sin(p.yaw) * fz, p.y + bl.y, p.z + Math.cos(p.yaw) * fz);
     } else this.clips.noBag();
     this.clips.update(dt);
     this.grass.update(this.time);
@@ -280,10 +287,17 @@ export class Game {
     this.mowerG.visible = mow; this.trimG.visible = !mow;
     if (mow) {
       const d = this.mowerOff;
-      this.mowerG.position.set(p.x + Math.sin(p.yaw) * d, 0, p.z + Math.cos(p.yaw) * d);
+      const mgx = p.x + Math.sin(p.yaw) * d, mgz = p.z + Math.cos(p.yaw) * d;
+      this.mowerG.position.set(mgx, this.terrain.heightAt(mgx, mgz), mgz);
       this.mowerG.rotation.y = p.yaw;
       const wob = Math.sin(this.time * 26) * 0.01 * this.speedF * (1 + this.load);
-      this.mowerG.rotation.z = wob;
+      // lie along the slope: pitch from the gradient ahead, roll from the gradient across
+      if (this.terrain.enabled) {
+        const n = this.terrain.normalAt(mgx, mgz);
+        const fx = Math.sin(p.yaw), fz = Math.cos(p.yaw);
+        this.mowerG.rotation.x = -(n.nx * fx + n.nz * fz);
+        this.mowerG.rotation.z = wob + (n.nx * -fz + n.nz * fx);
+      } else this.mowerG.rotation.z = wob;
       this.mowerG.traverse(o => { if (o.userData.wheel) o.rotation.x += this.speedF * dt * 6 / o.userData.wheel * 0.4; });
       // the bag swells with the cut, jiggles with the engine, and slumps when it tips out
       const bag = this.mowerG.userData.bag;
@@ -295,7 +309,7 @@ export class Game {
       }
     } else {
       // held to the player's RIGHT (screen-right = (-cos, +sin))
-      this.trimG.position.set(p.x + Math.sin(p.yaw) * 0.55 - Math.cos(p.yaw) * 0.25, 1.0, p.z + Math.cos(p.yaw) * 0.55 + Math.sin(p.yaw) * 0.25);
+      this.trimG.position.set(p.x + Math.sin(p.yaw) * 0.55 - Math.cos(p.yaw) * 0.25, p.y + 1.0, p.z + Math.cos(p.yaw) * 0.55 + Math.sin(p.yaw) * 0.25);
       this.trimG.rotation.y = p.yaw;
       this.trimG.traverse(o => { if (o.userData.line) o.rotation.y += dt * (this.trimming ? 55 : 4); });
     }
@@ -315,7 +329,7 @@ export class Game {
   camPos() {
     const p = this.p, bobA = this.gear.bob;
     const bob = Math.sin(this.time * 10.5) * 0.028 * this.speedF * bobA;
-    return { x: p.x, y: this.gear.cam + bob, z: p.z, yaw: p.yaw, pitch: p.pitch };
+    return { x: p.x, y: p.y + this.gear.cam + bob, z: p.z, yaw: p.yaw, pitch: p.pitch };
   }
 
   // ---------------- actions ----------------
