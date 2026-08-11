@@ -356,8 +356,26 @@ export function makeMower(gear, paint) {
     }
   } else {
     const deck = box(w, 0.16, w * 0.82, deckC, 0, 0.18, 0); g.add(deck);
-    g.add(cyl(0.13, 0.15, 0.16, 0x2c2c2c, 0.08, 0.34, 0.05, 10)); // engine
-    g.add(cyl(0.045, 0.045, 0.1, 0x555, 0.08, 0.44, 0.05, 8));
+    g.add(box(w * 0.96, 0.07, w * 0.78, 0x2b2b2b, 0, 0.10, 0));            // the shadowed lip under the deck
+    // ---- the engine, which is the bit you look at ----
+    g.add(box(0.30, 0.10, 0.28, 0x3a3a3a, 0.06, 0.28, 0.04));              // engine deck plate
+    g.add(cyl(0.13, 0.15, 0.16, 0x2c2c2c, 0.08, 0.34, 0.05, 10));          // block
+    for (let i = 0; i < 4; i++) g.add(box(0.005, 0.09, 0.24, 0x4a4a4a, 0.02 + i * 0.03, 0.40, 0.05)); // cooling fins
+    g.add(cyl(0.045, 0.045, 0.1, 0x555, 0.08, 0.44, 0.05, 8));             // filler neck
+    g.add(cyl(0.05, 0.05, 0.02, 0x1f1f1f, 0.08, 0.50, 0.05, 8));           // fuel cap
+    g.add(box(0.13, 0.11, 0.13, 0xb8b3a8, -0.06, 0.36, 0.02));             // air filter housing
+    g.add(cyl(0.035, 0.035, 0.16, 0x8a8f94, 0.19, 0.30, 0.02, 8));         // muffler
+    g.add(cyl(0.022, 0.022, 0.06, 0x5f5f5f, 0.19, 0.30, -0.09, 6));        // exhaust tip
+    g.add(box(0.03, 0.05, 0.03, 0xd8d2c4, 0.02, 0.38, -0.09));             // spark plug cap
+    // pull-cord: the handle sits proud on its little bracket, cord running to the shroud
+    g.add(cyl(0.012, 0.012, 0.13, 0xe8e2d2, 0.20, 0.41, 0.10, 5));
+    const pull = cyl(0.018, 0.018, 0.09, 0x9c7a4f, 0.20, 0.48, 0.10, 6); pull.rotation.z = Math.PI / 2; g.add(pull);
+    // a maker's badge on the deck nose — every mower in the world has one
+    g.add(box(w * 0.34, 0.012, 0.07, 0xe8e2d2, 0, 0.27, w * 0.33));
+    // side discharge chute, angled out over the cut
+    const chute = box(0.16, 0.13, 0.22, deckC, w * 0.5, 0.20, -0.02);
+    chute.rotation.z = -0.35; g.add(chute);
+    g.add(box(0.17, 0.02, 0.23, 0x2b2b2b, w * 0.53, 0.15, -0.02));
     for (const [x, z] of [[-w / 2 + 0.06, w * 0.33], [w / 2 - 0.06, w * 0.33], [-w / 2 + 0.06, -w * 0.33], [w / 2 - 0.06, -w * 0.33]]) {
       const wh = new THREE.Mesh(new THREE.CylinderGeometry(0.09, 0.09, 0.06, 10), mat(0x2c2c2c)); wh.rotation.z = Math.PI / 2; wh.position.set(x, 0.09, z); wh.userData.wheel = 0.09; g.add(wh);
     }
