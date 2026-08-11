@@ -13,6 +13,27 @@ Deploy = copy the whole folder to any static host (GitHub Pages works as-is).
 **F** high-cut lever (jungle grass needs it first) · hold **LMB** to trim ·
 **R** Pop's radio · **Z** zone list · **L** last-blade glow · **Esc** pause.
 
+## v1.11 (2026-08-11) — `mow/hood.js`: the world on all four sides
+
+street.js owned the road in front; everything else was bare green plane. Now every lot has
+neighbours left and right (fronts to the street, with trees, sheds and boundary hedges),
+the **backs** of the next street's houses behind you (back gardens, sheds, washing lines,
+a hedge line), a horizon ring of roofs and treelines in every direction, and one landmark
+on the skyline. Measured looking four ways from the middle of a lot: **12–20% bare sky**
+in the horizon band, where behind and to the sides used to be empty.
+
+**Five archetypes, authored per job in `JOB_HOOD`**, so the block suits the map:
+
+| archetype | jobs | reads as |
+|---|---|---|
+| `suburb` | marge, twins, coach, duplex, hendersons, rental, gary, pops, terrarium | the classic block |
+| `oldtown` | missvi, bell, foreclosure | older, denser, brick, big mature trees, a spire |
+| `main` | bakery, corner, commons | town strip: flat roofs, parapets, awnings, few trees |
+| `rural` | delgado, creek, church, watertower | wide gaps, barn, silo, treeline instead of a skyline |
+| `edge` | outfield, putthutt, cemetery, drivein | civic/open, sparse, floodlight masts |
+
+`def.hood` overrides per job. Horizon ring halves on Low quality. 24/24 jobs, 0 errors.
+
 ## v1.10 (2026-08-11) — the invisible walls around the house
 
 "There are invisible walls around the houses so you can't get right up to the edges."

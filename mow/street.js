@@ -32,7 +32,7 @@ function lit(hex, k) {
   if (!LITS[key]) LITS[key] = new THREE.MeshLambertMaterial({ color: hex, emissive: new THREE.Color(hex).multiplyScalar(k) });
   return LITS[key];
 }
-function brighten(g, k = 0.3) {
+export function brighten(g, k = 0.3) {
   g.traverse(o => {
     if (!o.isMesh || o.userData.keepMat || !o.material || !o.material.color) return;
     o.material = lit(o.material.color.getHex(), k);

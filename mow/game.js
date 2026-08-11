@@ -6,6 +6,7 @@ import { GrassField, ClipPool, CUT, HIGH, M_NOGRASS, M_WCLUMP, M_TRIM, mulberry,
 import { buildYard, makeMower, makeTrimmer, discoveryMesh } from './props.js';
 import { buildStreet } from './street.js';
 import { buildLife } from './life.js';
+import { buildHood } from './hood.js';
 import { jobDiscoveries } from './yards.js';
 import * as sfx from './sfx.js';
 
@@ -37,6 +38,7 @@ export class Game {
     // the street goes up after the yard so its windows join world.windows before the
     // light preset runs — then they warm with the house's at golden hour, for free
     this.world.street = buildStreet(scene, def, this.world, this.quality);
+    this.world.hood = buildHood(scene, def, this.world, this.quality);
     this.world.life = buildLife(scene, def, this.world, g, this.quality);
     g.finalize();
     this.clips = new ClipPool(scene, this.quality === 'low' ? 400 : 900);
