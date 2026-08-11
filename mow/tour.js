@@ -13,7 +13,7 @@ export const TOUR = [
     id: 'hedgemaze', block: 5, tour: true, name: 'The Bellamy Maze', client: 'Bellamy House & Gardens', who: 'MRS. ADEYEMI',
     blurb: "A hedge maze planted in 1931 and trimmed by one man until last spring. The paths are grass. The walls are not. Nothing in here is wide enough for the deck and everyone knows it — bring the trimmer and bring patience.",
     pop: 'mind the walls',
-    lot: { w: 28, h: 20 }, seed: 601, fence: 'rail', gate: { x: 13.5, w: 1.6 }, hood: 'oldtown',
+    lot: { w: 28, h: 20 }, seed: 601, fence: 'rail', gate: { x: 13.5, w: 1.6 }, hood: 'parkland',
     terrain: { features: [{ k: 'mound', x: 14, z: 10, r: 13, h: 0.55 }] },   // the old lawn crowns for drainage
     tiers: [{ t: 'base', tier: 3 }, { t: 'rect', x: 11, z: 8, w: 6, h: 5, tier: 4 }],
     props: [
@@ -48,7 +48,7 @@ export const TOUR = [
     id: 'speedway', block: 5, tour: true, name: 'Hazel Park Speedway', client: 'Speedway Association', who: 'DUTCH',
     blurb: "A quarter-mile dirt oval with a grass infield and banking they cut into the hillside in 1962. You are mowing the banking. Yes, on the slope. Dutch says the mower has done it before and the mower has never complained.",
     pop: 'watch the banking',
-    lot: { w: 34, h: 24 }, seed: 602, fence: 'chain', gate: { x: 16.5, w: 2.0 }, hood: 'edge',
+    lot: { w: 34, h: 24 }, seed: 602, fence: 'chain', gate: { x: 16.5, w: 2.0 }, hood: 'openfield',
     terrain: { features: [
       { k: 'ridge', x1: 4, z1: 4, x2: 30, z2: 4, w: 5.0, h: 1.9 },
       { k: 'ridge', x1: 4, z1: 20, x2: 30, z2: 20, w: 5.0, h: 1.9 },
@@ -83,7 +83,7 @@ export const TOUR = [
     id: 'reservoir', block: 5, tour: true, name: 'The Reservoir Bank', client: 'Hazel Park Water District', who: 'RAY (UTILITIES)',
     blurb: "The earthen bank that holds back the town's drinking water. Grass keeps it from washing out, so it gets cut twice a summer whether anyone's watching or not. It is the steepest thing you will mow and the view from the top is the best in the county.",
     pop: 'the whole county',
-    lot: { w: 32, h: 22 }, seed: 603, fence: 'none', gate: { x: 3, w: 2.0 }, hood: 'rural',
+    lot: { w: 32, h: 22 }, seed: 603, fence: 'none', gate: { x: 3, w: 2.0 }, hood: 'water',
     terrain: { features: [
       { k: 'ridge', x1: -2, z1: 15, x2: 34, z2: 15, w: 9.0, h: 3.4 },
       { k: 'slope', ang: 0, h: 1.2 },
@@ -117,7 +117,7 @@ export const TOUR = [
     id: 'quarry', block: 5, tour: true, name: 'The Old Quarry Steps', client: 'Hazel Park Historical Society', who: 'DR. LIM',
     blurb: "They stopped cutting limestone here in 1949 and the town planted grass on the terraces to stop the dust. Four steps, each one flat as a table, each one a different distance from the last. Nobody has mowed the bottom terrace since the society took it over.",
     pop: 'four flat tables',
-    lot: { w: 30, h: 24 }, seed: 604, fence: 'rail', gate: { x: 14, w: 1.8 }, hood: 'rural',
+    lot: { w: 30, h: 24 }, seed: 604, fence: 'rail', gate: { x: 14, w: 1.8 }, hood: 'parkland',
     terrain: { features: [
       { k: 'step', x1: 0, z1: 6.5, x2: 30, z2: 6.5, w: 2.2, h: 1.5 },
       { k: 'step', x1: 0, z1: 12.5, x2: 30, z2: 12.5, w: 2.0, h: 1.4 },
@@ -151,7 +151,7 @@ export const TOUR = [
     id: 'rooftop', block: 5, tour: true, name: 'The Roof at Vance & Co.', client: 'Vance & Co. Building', who: 'PRIYA (FACILITIES)',
     blurb: "Six floors up, a lawn the size of a tennis court, laid over the roof of the old mill offices because someone read an article in 1998. It has planters, vents, a very short parapet, and the best breeze in town. The mower came up in the freight lift and it is going back down the same way.",
     pop: 'six floors up',
-    lot: { w: 22, h: 16 }, seed: 605, fence: 'rail', gate: { x: 2.4, w: 1.6 }, hood: 'main',
+    lot: { w: 22, h: 16 }, seed: 605, fence: 'rail', gate: { x: 2.4, w: 1.6 }, hood: 'city',
     terrain: { features: [{ k: 'mound', x: 11, z: 8, r: 11, h: 0.35 }] },   // the roof falls away to its drains
     tiers: [{ t: 'base', tier: 2 }, { t: 'rect', x: 14, z: 9, w: 8, h: 7, tier: 3 }],
     props: [
@@ -182,7 +182,7 @@ export const TOUR = [
     id: 'cutterfield', block: 5, tour: true, name: 'Cutter Field', client: 'Hazel Park Owls (Single-A)', who: 'MARISOL (GROUNDS)',
     blurb: "A real ballpark with real grounds crew standards and a real crown on the outfield so the rain runs off. Marisol wants the pattern in it — bands, alternating, straight as a ruler, because it goes on the local news Friday. No pressure. Actually, no pressure at all: nothing here can be ruined.",
     pop: 'it goes on the news',
-    lot: { w: 38, h: 26 }, seed: 606, fence: 'chain', gate: { x: 19, w: 2.2 }, hood: 'edge',
+    lot: { w: 38, h: 26 }, seed: 606, fence: 'chain', gate: { x: 19, w: 2.2 }, hood: 'openfield',
     terrain: { features: [{ k: 'mound', x: 19, z: 13, r: 20, h: 0.75 }] },   // the outfield crown, for drainage
     tiers: [{ t: 'base', tier: 2 }],
     props: [
@@ -215,7 +215,7 @@ export const TOUR = [
     id: 'ninthgreen', block: 5, tour: true, name: 'The Ninth at Ridgeway', client: 'Ridgeway Golf Club (municipal)', who: 'ARCHIE',
     blurb: "Municipal, nine holes, dollar-fifty a round in 1970 and not much more now. The ninth is all humps and hollows because the man who built it liked a joke. The green is precious. The rest is grass with opinions.",
     pop: 'humps and hollows',
-    lot: { w: 34, h: 22 }, seed: 607, fence: 'none', gate: { x: 2.5, w: 2.0 }, hood: 'rural',
+    lot: { w: 34, h: 22 }, seed: 607, fence: 'none', gate: { x: 2.5, w: 2.0 }, hood: 'parkland',
     terrain: { features: [
       { k: 'mound', x: 9, z: 8, r: 6.0, h: 1.3 },
       { k: 'mound', x: 22, z: 14, r: 6.5, h: 1.1 },
@@ -252,7 +252,7 @@ export const TOUR = [
     id: 'fairground', block: 5, tour: true, name: 'The Fairground, Monday', client: 'Hazel Park Fair Board', who: 'DEL',
     blurb: "The fair left Sunday night and the grass under it hasn't seen sun in nine days. Booths still standing, ride pads still marked out, everything smells faintly of fried dough. Mow it before the flattened bits set that way.",
     pop: 'still smells of dough',
-    lot: { w: 30, h: 22 }, seed: 608, light: 'dusk', fence: 'chain', gate: { x: 15, w: 2.2 }, hood: 'edge',
+    lot: { w: 30, h: 22 }, seed: 608, light: 'dusk', fence: 'chain', gate: { x: 15, w: 2.2 }, hood: 'openfield',
     terrain: { features: [
       { k: 'bowl', x: 10, z: 8, r: 4.5, h: 0.35 },
       { k: 'bowl', x: 21, z: 15, r: 5.0, h: 0.4 },
@@ -286,7 +286,7 @@ export const TOUR = [
     id: 'orchard', block: 5, tour: true, name: 'The Vesper Orchard', client: 'Vesper Family Orchard', who: 'JUNE VESPER',
     blurb: "Eleven rows of apple trees on a south-facing slope, grass between every one. The tractor mower died in April and the rows are too narrow for it anyway now the trees have thickened. Around each trunk by hand, please. There are ninety-odd trunks.",
     pop: 'ninety-odd trunks',
-    lot: { w: 32, h: 24 }, seed: 609, fence: 'rail', gate: { x: 2.6, w: 1.8 }, hood: 'rural',
+    lot: { w: 32, h: 24 }, seed: 609, fence: 'rail', gate: { x: 2.6, w: 1.8 }, hood: 'orchardland',
     terrain: { features: [{ k: 'slope', ang: 0, h: 3.2 }, { k: 'mound', x: 20, z: 12, r: 9, h: 0.6 }] },
     tiers: [{ t: 'base', tier: 3 }],
     props: [
@@ -314,7 +314,7 @@ export const TOUR = [
     id: 'threeam', block: 5, tour: true, name: 'The 3AM Contract', client: '—', who: '—',
     blurb: "The number left one message. It gave a field, a time, and a shape. It paid in advance, in cash, in an envelope taped under the gate latch. The shape is drawn on the back of the envelope and it is not a shape any lawn needs. You are going to mow it anyway, because you want to know.",
     pop: '—', noRadio: true,
-    lot: { w: 30, h: 24 }, seed: 610, light: 'night', fence: 'rail', gate: { x: 15, w: 1.8 }, hood: 'rural',
+    lot: { w: 30, h: 24 }, seed: 610, light: 'night', fence: 'rail', gate: { x: 15, w: 1.8 }, hood: 'openfield',
     terrain: { features: [
       { k: 'mound', x: 15, z: 12, r: 7.0, h: 1.1 },
       { k: 'mound', x: 6, z: 6, r: 3.6, h: 0.7 },

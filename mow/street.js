@@ -205,13 +205,18 @@ export function buildStreet(scene, def, world, quality) {
   const rng = mulberry((def.seed || 42) * 7 + 13);
   const night = def.light === 'night' || def.light === 'weird';
   // the finale is written to be quiet; night streets are sleepy. Anything else is a lived-in afternoon.
-  const quiet = !!def.finale || def.street === false;
-  const gapRange = def.street === false ? null : quiet ? [30, 55] : night ? [13, 26] : [5.5, 11.5];
+  // A reservoir bank, a speedway and a roof six floors up do not have a residential street
+  // out front. Those maps declare a non-residential backdrop, and this whole layer — houses,
+  // road markings, parked cars, traffic, pedestrians — sits out.
+  const NON_RESIDENTIAL = ['parkland', 'openfield', 'water', 'city', 'orchardland'];
+  const noStreet = NON_RESIDENTIAL.includes(def.hood);
+  const quiet = !!def.finale || def.street === false || noStreet;
+  const gapRange = (def.street === false || noStreet) ? null : quiet ? [30, 55] : night ? [13, 26] : [5.5, 11.5];
   const X0 = -16, X1 = W + 16;                 // spawn / despawn line either side
 
   // ---- the houses across the street, each with a drive and a mailbox ----
   const drives = [];
-  const n = 5;
+  const n = noStreet ? 0 : 5;
   for (let i = 0; i < n; i++) {
     const hx = -10 + i * (W + 20) / n + rng() * 2.2;
     const built = makeNeighbourHouse(rng, world);
@@ -240,14 +245,14 @@ export function buildStreet(scene, def, world, quality) {
   }
 
   // ---- road markings ----
-  for (let x = X0; x < X1; x += 3.2) {
+  if (!noStreet) for (let x = X0; x < X1; x += 3.2) {
     const dash = new THREE.Mesh(new THREE.PlaneGeometry(1.7, 0.14), mat(0xd8d2bc));
     dash.rotation.x = -Math.PI / 2; dash.position.set(x, 0.004, -4.4); root.add(dash);
   }
 
   // ---- parked cars: a couple of drives occupied from the start, one at the kerb ----
   const parked = [];
-  if (def.street !== false) {
+  if (def.street !== false && !noStreet) {
     for (const d of drives) {
       if (rng() > 0.45) continue;
       const c = makeCar(rng() < 0.3 ? 'pickup' : 'sedan', CAR_PAINT[Math.floor(rng() * CAR_PAINT.length)]);

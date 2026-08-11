@@ -37,6 +37,35 @@ export const HOODS = {
     roof: [0x5f5a52, 0x6a6258], rise: 0.9, w: [5, 9], h: [2.6, 3.6],
     tree: 'sparse', treeN: 0.7, hedge: 0.15, far: ['trees', 'masts'], spacing: 17,
   },
+
+  // ---- backdrops for the Wider Job Book. `residential: false` means NO side or rear
+  // neighbours: a reservoir bank, a stadium and a rooftop do not have next-door gardens,
+  // and putting them there was what made those maps read as somebody's back lawn. ----
+  parkland: {  // walled grounds, mature specimen trees: the maze, the quarry, the golf club
+    residential: false,
+    body: [0xc9bda8, 0xbfb49f], roof: [0x5a5048], rise: 1.9, w: [6, 9], h: [3.4, 4.6],
+    tree: 'tall', treeN: 1, hedge: 1, far: ['trees', 'spire'], spacing: 14, ringDens: 1.25, ringNear: 46,
+  },
+  openfield: { // speedway, ballpark, fairground, the 3AM field
+    residential: false,
+    body: [0xe2dccb, 0xd6cdb8], roof: [0x6d5f52, 0x7a4a3c], rise: 1.8, w: [6, 9], h: [3, 4],
+    tree: 'round', treeN: 1, hedge: 0, far: ['trees', 'barn', 'masts'], spacing: 22, ringDens: 0.8, ringNear: 72,
+  },
+  water: {     // the reservoir: open water, low hills, nothing built
+    residential: false,
+    body: [0xd6cdb8], roof: [0x6d5f52], rise: 1.6, w: [5, 7], h: [3, 4],
+    tree: 'round', treeN: 1, hedge: 0, far: ['water', 'hills', 'trees'], spacing: 26, ringDens: 0.7, ringNear: 78,
+  },
+  city: {      // six floors up: a skyline, and it should be close enough to feel it
+    residential: false,
+    body: [0xa89684, 0x8f8378, 0xb3a493, 0x7d7268], roof: [0x585349], rise: 0.3, w: [9, 16], h: [10, 22],
+    tree: 'sparse', treeN: 0.1, hedge: 0, far: ['towers'], spacing: 14, ringDens: 1.5, ringNear: 40, flat: true,
+  },
+  orchardland: { // more orchard, in every direction
+    residential: false,
+    body: [0xe2dccb], roof: [0x7a4a3c], rise: 1.8, w: [6, 8], h: [3, 4],
+    tree: 'round', treeN: 1, hedge: 0, far: ['rows', 'trees', 'barn'], spacing: 24, ringDens: 1.1, ringNear: 58,
+  },
 };
 
 // which block each job sits in — authored, so it makes sense per map
@@ -130,7 +159,7 @@ export function buildHood(scene, def, world, quality) {
   };
 
   // ---- the neighbours either side of you, fronts to the street like yours ----
-  for (const sign of [-1, 1]) {
+  if (P.residential !== false) for (const sign of [-1, 1]) {
     const edge = sign < 0 ? -3.5 : W + 3.5;
     let z = -6 + rng() * 2;
     for (let i = 0; i < 3; i++) {
@@ -150,7 +179,7 @@ export function buildHood(scene, def, world, quality) {
   }
 
   // ---- the backs of the houses on the next street over ----
-  {
+  if (P.residential !== false) {
     let x = -8 + rng() * 4;
     while (x < W + 8) {
       const h = house(P, rng);
@@ -168,15 +197,54 @@ export function buildHood(scene, def, world, quality) {
   }
 
   // ---- the horizon, all the way round, so no angle is bare ----
+  // open water, laid before the ring so the far bank sits on top of it
+  if (P.far.includes('water')) {
+    const w = new THREE.Mesh(new THREE.PlaneGeometry(260, 190), mat(0x5d8ea8));
+    w.rotation.x = -Math.PI / 2; w.position.set(cx, -0.06, cz - 108); root.add(w);
+    for (let i = 0; i < 7; i++) {   // low hills across the water
+      const hl = new THREE.Group();
+      const r = 16 + rng() * 14;
+      hl.add(sph(r, 0x6d8a63, 0, -r * 0.42, 0, 10));
+      hl.position.set(cx - 130 + i * 44 + rng() * 16, 0, cz - 150 - rng() * 40);
+      hl.traverse(m => { if (m.isMesh) m.castShadow = false; }); brighten(hl, 0.2); root.add(hl);
+    }
+  }
+  if (P.far.includes('hills')) for (let i = 0; i < 6; i++) {
+    const hl = new THREE.Group(); const r = 20 + rng() * 16;
+    hl.add(sph(r, 0x71906a, 0, -r * 0.5, 0, 10));
+    const a = 0.6 + rng() * 4.2;
+    hl.position.set(cx + Math.sin(a) * (120 + rng() * 40), 0, cz + Math.cos(a) * (120 + rng() * 40));
+    hl.traverse(m => { if (m.isMesh) m.castShadow = false; }); brighten(hl, 0.2); root.add(hl);
+  }
+  if (P.far.includes('rows')) {   // the orchard carries on past the fence, in every direction
+    for (let r = 0; r < 7; r++) for (let c = 0; c < 12; c++) {
+      const t = treeOf('round', rng, 0.9 + rng() * 0.3);
+      const side = r % 2 ? 1 : -1;
+      t.position.set(cx - 46 + c * 8 + rng() * 1.5, 0, cz + side * (26 + r * 7) + rng() * 1.5);
+      t.traverse(m => { if (m.isMesh) m.castShadow = false; }); brighten(t, 0.24); root.add(t);
+    }
+  }
+
   const ring = new THREE.Group();
-  const rings = Math.round(52 * far);
+  const rings = Math.round(52 * far * (P.ringDens || 1));
   for (let i = 0; i < rings; i++) {
     const a = (i / rings) * 6.283 + rng() * 0.06;
-    const rad = 62 + rng() * 34;
+    const rad = (P.ringNear || 62) + rng() * 34;
     const x = cx + Math.sin(a) * rad, z = cz + Math.cos(a) * rad;
     // don't crowd the road corridor in front
     if (z < -6 && z > -22 && Math.abs(x - cx) < W * 0.8) continue;
     const kind = rng();
+    if (P.far.includes('water') && z < cz - 30) continue;    // that direction is the reservoir
+    if (P.far.includes('towers')) {                          // a real skyline, seen from a roof
+      const g = new THREE.Group();
+      const w = P.w[0] + rng() * (P.w[1] - P.w[0]), h = P.h[0] + rng() * (P.h[1] - P.h[0]), d = 8 + rng() * 8;
+      g.add(box(w, h, d, pick(P.body, rng), 0, h / 2, 0));
+      g.add(box(w + 0.6, 0.5, d + 0.6, pick(P.roof, rng), 0, h + 0.25, 0));
+      const winC = 0x9db4c4;                                  // window bands, so they read as buildings
+      for (let f = 1; f * 2.4 < h - 1; f++) g.add(box(w * 0.86, 0.7, d + 0.05, winC, 0, f * 2.4, 0));
+      g.position.set(x, 0, z); g.rotation.y = rng() * 6.283; ring.add(g);
+      continue;
+    }
     if (P.far.includes('trees') && kind < 0.55) {
       const t = treeOf(P.tree, rng, 2.0 + rng() * 1.6);
       t.position.set(x, 0, z); ring.add(t);
