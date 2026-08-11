@@ -6,6 +6,7 @@ import { Game, GEARS } from './game.js';
 import { JOBS, GEAR_UNLOCKS, dailyDef } from './yards.js';
 import * as ui from './ui.js';
 import * as sfx from './sfx.js';
+import { makePost } from './post.js';
 
 // ---------- renderer ----------
 const renderer = new THREE.WebGLRenderer({ antialias: true, preserveDrawingBuffer: false });
@@ -18,16 +19,24 @@ renderer.toneMapping = THREE.ACESFilmicToneMapping;
 renderer.toneMappingExposure = 1.0;
 document.getElementById('app').appendChild(renderer.domElement);
 const camera = new THREE.PerspectiveCamera(74, innerWidth / innerHeight, 0.05, 400);
+const post = makePost(renderer);
 addEventListener('resize', () => {
   renderer.setSize(innerWidth, innerHeight);
+  post.setSize(innerWidth, innerHeight);
   camera.aspect = innerWidth / innerHeight; camera.updateProjectionMatrix();
 });
+// post is on unless the machine can't do WebGL2 or the player turned it off
+function postOn() { return post.available && S.postfx !== false && quality() !== 'low'; }
+function drawScene(sc, cam, warm) {
+  if (postOn()) post.render(sc, cam, warm);
+  else { renderer.setRenderTarget(null); renderer.render(sc, cam); }
+}
 
 // ---------- save ----------
 const SAVE_KEY = 'fc-save';
 function loadSave() {
   try { const s = JSON.parse(localStorage.getItem(SAVE_KEY)); if (s && s.v === 1) return s; } catch (_) { }
-  return { v: 1, done: {}, pegboard: [], jar: 0, resume: null, settings: { veng: 70, vamb: 80, vrad: 65, sens: 100, invy: false, bob: true, qual: 'auto' } };
+  return { v: 1, done: {}, pegboard: [], jar: 0, resume: null, settings: { veng: 70, vamb: 80, vrad: 65, sens: 100, invy: false, bob: true, postfx: true, qual: 'auto' } };
 }
 const save = loadSave();
 function persist() { try { localStorage.setItem(SAVE_KEY, JSON.stringify(save)); } catch (_) { } }
@@ -211,11 +220,12 @@ function droneShot(final = false) {
   const dist = Math.max(W, H);
   dc.position.set(W * 0.18, dist * 0.72, H * 1.42);
   dc.lookAt(W / 2, 0, H * 0.42);
-  const old = { w: renderer.domElement.width, h: renderer.domElement.height };
   renderer.setSize(1200, 675, false);
-  renderer.render(scene, dc);
+  post.setSize(1200, 675);                 // the postcard gets the grade too — it's the keepsake
+  drawScene(scene, dc, G.warm);
   const url = renderer.domElement.toDataURL('image/jpeg', 0.9);
   renderer.setSize(innerWidth, innerHeight, false);
+  post.setSize(innerWidth, innerHeight);
   const img = new Image(); img.src = url;
   return img;
 }
@@ -240,6 +250,7 @@ bind('s-vrad', 'vrad', v => sfx.setRadioUserVol(v / 100));
 bind('s-sens', 'sens', () => { });
 bind('s-invy', 'invy', () => { });
 bind('s-bob', 'bob', () => { });
+bind('s-postfx', 'postfx', () => { });
 bind('s-qual', 'qual', () => ui.hint('Quality applies next job.'));
 
 // ---------- loop ----------
@@ -259,7 +270,7 @@ function drawFrame(dt) {
   // the engine digs in: a breath of FOV under load
   smoothFov += ((74 + (G.tool === 'mow' ? G.load * 3.2 : 0)) - smoothFov) * Math.min(1, dt * 3);
   if (Math.abs(camera.fov - smoothFov) > 0.05) { camera.fov = smoothFov; camera.updateProjectionMatrix(); }
-  renderer.render(scene, camera);
+  drawScene(scene, camera, G.warm);
 }
 function loop(now) {
   requestAnimationFrame(loop);
@@ -307,6 +318,7 @@ window.__fc = {
     }
   },
   shot: () => renderer.domElement.toDataURL('image/jpeg', 0.85),
+  post: () => post,
   renderOnce: (dt = 0.016) => { if (G && scene) drawFrame(dt); },
   sfx,
 };

@@ -287,7 +287,7 @@ export function makeTrimmer() {
 
 // ---------------- yard builder ----------------
 export function buildYard(scene, def, grass, quality) {
-  const world = { colliders: [], group: new THREE.Group(), sway: [] };
+  const world = { colliders: [], group: new THREE.Group(), sway: [], swayRoots: [] };
   scene.add(world.group);
   const W = def.lot.w, H = def.lot.h;
 
@@ -418,6 +418,7 @@ export function buildYard(scene, def, grass, quality) {
     if (p.rot) built.g.rotation.y = p.rot;
     if (p.s) built.g.scale.setScalar(p.s);
     world.group.add(built.g);
+    world.swayRoots.push(built.g);   // life.js finds the leafy bits and gives them the wind
     const s = p.s || 1;
     const cs = Math.cos(p.rot || 0), sn = Math.sin(p.rot || 0);
     const tf = (lx, lz) => [p.x + (lx * cs + lz * sn) * s, p.z + (-lx * sn + lz * cs) * s];
@@ -439,9 +440,9 @@ export function buildYard(scene, def, grass, quality) {
   // userData.spd, so the sky has parallax instead of one sheet sliding along)
   world.clouds = [];
   const LAYERS = [
-    { n: 5, y: 20, yv: 6, s: 1.0, op: 0.88, spd: 0.42, puff: 4 },   // low, fat, quickest
-    { n: 5, y: 34, yv: 10, s: 1.5, op: 0.72, spd: 0.24, puff: 4 },  // mid
-    { n: 4, y: 52, yv: 12, s: 2.4, op: 0.38, spd: 0.11, puff: 5 },  // high thin cirrus
+    { n: 6, y: 19, yv: 6, s: 1.7, op: 0.90, spd: 1.15, puff: 5 },   // low, fat, quickest
+    { n: 5, y: 33, yv: 10, s: 2.6, op: 0.74, spd: 0.62, puff: 5 },  // mid
+    { n: 4, y: 52, yv: 12, s: 3.8, op: 0.40, spd: 0.28, puff: 6 },  // high thin cirrus
   ];
   let ci = 0;
   for (const L of LAYERS) for (let i = 0; i < L.n; i++, ci++) {

@@ -13,6 +13,23 @@ export const CUT = 255, HIGH = 128, UNCUT = 0;
 export const M_WCLUMP = 16, M_TRIM = 32, M_NOGRASS = 255;
 const TIER_H = [0, 0.11, 0.24, 0.40, 0.66];      // blade height by tier
 const DENSITY = { high: 80, med: 44, low: 20 };  // blades per m²
+const FLOWER_DENS = { high: 0.85, med: 0.55, low: 0 };  // per m² of tall grass
+
+// Cloud shadow, shared by every big surface so they darken as ONE patch — the blades, the
+// ground overlay and the painted ground all call this with the same p (world XZ) and t.
+// Analytic rather than a texture: two crossed warped sines make soft blobs ~14m across
+// drifting at about 1.3 m/s, which crosses a lot in roughly fifteen seconds.
+export const CLOUD_GLSL = `
+  uniform float uCloudAmt;
+  float cloudShade(vec2 p, float t){
+    vec2 q = p * 0.26 - vec2(t * 0.21, t * 0.06);
+    // SUM the two warped sines, don't multiply them: a product clusters hard around 0.5,
+    // which measured as only 3-23% of the lawn ever in shadow. Summing gives an even
+    // field — 25-32% shaded at any moment, with the overall brightness steady (mean
+    // swing 0.017) so patches visibly cross instead of the whole yard pulsing.
+    float n = (sin(q.x * 1.3 + sin(q.y * 0.9) * 1.9) + sin(q.y * 1.1 + sin(q.x * 0.7) * 1.6)) * 0.25 + 0.5;
+    return mix(1.0, mix(0.72, 1.0, smoothstep(0.10, 0.46, n)), uCloudAmt);
+  }`;
 
 export class GrassField {
   constructor(scene, W, H, quality = 'high') {
@@ -25,6 +42,12 @@ export class GrassField {
     this.zoneTotal = new Uint32Array(64); this.zoneCut = new Uint32Array(64); this.zoneHigh = new Uint32Array(64);
     this.total = 0; this.cut = 0; this.high = 0;
     this.dirty = false; this.quality = quality;
+    // shared uniform objects — one write drives the blades, the overlay, the flowers and
+    // the painted ground, so a cloud shadow can never drift out of step between them
+    this.uTime = { value: 0 };
+    this.uWarm = { value: 0 };
+    this.uCloudAmt = { value: quality === 'low' ? 0 : 1 };
+    this.uLotV = { value: new THREE.Vector2(W, H) };
     this.chunks = []; this.group = new THREE.Group(); scene.add(this.group);
     this._noGrassCircles = []; this._clipCB = null;
     this.tex = new THREE.DataTexture(this.mask, this.tw, this.th, THREE.RGBAFormat);
@@ -94,7 +117,7 @@ export class GrassField {
   }
   _buildBlades() {
     const dens = DENSITY[this.quality] || DENSITY.med;
-    const mat = makeBladeMaterial(this.tex, this.W, this.H);
+    const mat = makeBladeMaterial(this.tex, this);
     this.bladeMat = mat;
     // one tapered, slightly bent blade: 4 verts / 2 tris, shaped in the shader
     const base = new THREE.PlaneGeometry(1, 1, 1, 2); base.translate(0, 0.5, 0);
@@ -124,13 +147,51 @@ export class GrassField {
       const m = new THREE.Mesh(g, mat); m.frustumCulled = true;
       this.group.add(m); this.chunks.push(m);
     }
+    this._buildFlowers();
     // ground overlay: mask-driven wrongness + stripes, readable at any distance
     const og = new THREE.PlaneGeometry(this.W, this.H);
-    const om = makeOverlayMaterial(this.tex, this.trackTex);
+    const om = makeOverlayMaterial(this.tex, this.trackTex, this);
     this.overlay = new THREE.Mesh(og, om);
     this.overlay.rotation.x = -Math.PI / 2;
     this.overlay.position.set(this.W / 2, 0.012, this.H / 2);
     this.scene.add(this.overlay);
+  }
+
+  // Wildflowers standing in the uncut grass. They are mask-driven exactly like the blades:
+  // the vertex shader collapses an instance to nothing the moment its texel reads CUT, so
+  // mowing them away costs the CPU nothing and can never fall out of sync with the cut.
+  _buildFlowers() {
+    const dens = FLOWER_DENS[this.quality] ?? FLOWER_DENS.med;
+    if (!dens) return;
+    const rng = mulberry(90210);
+    const tries = Math.floor(this.W * this.H * dens * 2.2);
+    const offs = new Float32Array(tries * 2), rnds = new Float32Array(tries * 4);
+    let put = 0;
+    for (let k = 0; k < tries; k++) {
+      const x = rng() * this.W, z = rng() * this.H;
+      const tx = Math.floor(x * TPM), tz = Math.floor(z * TPM);
+      if (!this.inb(tx, tz)) continue;
+      const meta = this.mask[this.idx(tx, tz) * 4 + 2];
+      if (meta === M_NOGRASS || (meta & 15) < 2) continue;   // only stands in real growth
+      offs[put * 2] = x; offs[put * 2 + 1] = z;
+      rnds[put * 4] = 0.22 + rng() * 0.2;      // height
+      rnds[put * 4 + 1] = rng() * 6.283;       // yaw
+      rnds[put * 4 + 2] = Math.floor(rng() * 3); // which flower
+      rnds[put * 4 + 3] = rng() * 6.283;       // sway phase
+      put++;
+    }
+    if (!put) return;
+    const base = crossQuads();
+    const g = new THREE.InstancedBufferGeometry();
+    g.index = base.index; g.attributes.position = base.attributes.position; g.attributes.uv = base.attributes.uv;
+    g.setAttribute('aOff', new THREE.InstancedBufferAttribute(offs.subarray(0, put * 2), 2));
+    g.setAttribute('aRnd', new THREE.InstancedBufferAttribute(rnds.subarray(0, put * 4), 4));
+    g.instanceCount = put;
+    g.boundingSphere = new THREE.Sphere(new THREE.Vector3(this.W / 2, 0.3, this.H / 2), Math.hypot(this.W, this.H) / 2 + 1);
+    this.flowerCount = put;
+    this.flowers = new THREE.Mesh(g, makeFlowerMaterial(this.tex, flowerAtlas(), this));
+    this.flowers.frustumCulled = false;
+    this.group.add(this.flowers);
   }
 
   // ---------- the verb: stamp a cut ----------
@@ -244,23 +305,26 @@ export class GrassField {
   update(t) {
     if (this.dirty) { this.tex.needsUpdate = true; this.dirty = false; }
     if (this.trackDirty) { this.trackTex.needsUpdate = true; this.trackDirty = false; }
-    if (this.bladeMat) this.bladeMat.uniforms.uTime.value = t;
+    this.uTime.value = t;   // shared: blades, overlay, flowers and the ground all read it
   }
   setMow(x, z, s) { if (this.bladeMat) this.bladeMat.uniforms.uMow.value.set(x, z, s); }
-  setSun(warm) { if (this.bladeMat) this.bladeMat.uniforms.uWarm.value = warm; if (this.overlay) this.overlay.material.uniforms.uWarm.value = warm; }
+  setSun(warm) { this.uWarm.value = warm; }
   dispose() { this.group.removeFromParent(); if (this.overlay) this.overlay.removeFromParent(); }
 }
 
 // ---------- materials ----------
-function makeBladeMaterial(tex, W, H) {
+function makeBladeMaterial(tex, F) {
   return new THREE.ShaderMaterial({
-    uniforms: { uMask: { value: tex }, uLot: { value: new THREE.Vector2(W, H) }, uTime: { value: 0 }, uWarm: { value: 0 }, uMow: { value: new THREE.Vector3(-99, -99, 0) } },
+    uniforms: { uMask: { value: tex }, uLot: F.uLotV, uTime: F.uTime, uWarm: F.uWarm, uCloudAmt: F.uCloudAmt, uMow: { value: new THREE.Vector3(-99, -99, 0) } },
     side: THREE.DoubleSide,
     vertexShader: `
       attribute vec2 aOff; attribute vec4 aRnd;
       uniform sampler2D uMask; uniform vec2 uLot; uniform float uTime; uniform vec3 uMow;
       varying float vShade; varying float vTone; varying float vTip; varying float vTier; varying float vCut;
+      varying float vCloud;
+      ${CLOUD_GLSL}
       void main(){
+        vCloud = cloudShade(aOff, uTime);
         vec4 m = texture2D(uMask, aOff / uLot);
         float meta = m.b * 255.0;
         float noG = step(249.0, meta);
@@ -304,6 +368,7 @@ function makeBladeMaterial(tex, W, H) {
     fragmentShader: `
       uniform float uWarm;
       varying float vShade; varying float vTone; varying float vTip; varying float vTier; varying float vCut;
+      varying float vCloud;
       void main(){
         vec3 root = vec3(0.16, 0.30, 0.10);
         vec3 tip  = mix(vec3(0.38, 0.60, 0.22), vec3(0.30, 0.48, 0.26), clamp((vTier - 1.0) / 3.0, 0.0, 1.0) * (1.0 - vCut));
@@ -315,17 +380,105 @@ function makeBladeMaterial(tex, W, H) {
         float tmix = mix(vTip, 0.58 + 0.42 * vTip, vCut);
         vec3 col = mix(root, tip, tmix) * vShade * vTone;
         col = mix(col, col * vec3(1.12, 1.0, 0.82), uWarm * 0.55);  // golden hour
+        col *= vCloud;                                               // a cloud went over
         gl_FragColor = vec4(col, 1.0);
       }`
   });
 }
-function makeOverlayMaterial(tex, trackTex) {
+// two quads crossed at right angles, so a flower reads from every direction without
+// billboarding (billboards visibly spin when you turn, which fights a still summer lawn)
+function crossQuads() {
+  const pos = [], uv = [], idx = [];
+  [[1, 0], [0, 1]].forEach(([dx, dz], qi) => {
+    const b = qi * 4;
+    pos.push(-0.5 * dx, 0, -0.5 * dz, 0.5 * dx, 0, 0.5 * dz, 0.5 * dx, 1, 0.5 * dz, -0.5 * dx, 1, -0.5 * dz);
+    uv.push(0, 0, 1, 0, 1, 1, 0, 1);
+    idx.push(b, b + 1, b + 2, b, b + 2, b + 3);
+  });
+  const g = new THREE.BufferGeometry();
+  g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+  g.setAttribute('uv', new THREE.Float32BufferAttribute(uv, 2));
+  g.setIndex(idx);
+  return g;
+}
+let FLOWER_TEX = null;
+function flowerAtlas() {  // dandelion | clover | daisy — head at the top, stem to the base
+  if (FLOWER_TEX) return FLOWER_TEX;
+  const C = 96, c = document.createElement('canvas'); c.width = C * 3; c.height = C;
+  const x = c.getContext('2d');
+  const stem = (ox) => { x.strokeStyle = '#4e7a34'; x.lineWidth = 5; x.beginPath(); x.moveTo(ox + C / 2, C); x.lineTo(ox + C / 2, C * 0.42); x.stroke(); };
+  // dandelion
+  stem(0);
+  x.fillStyle = '#f0c22e';
+  for (let i = 0; i < 14; i++) { const a = i / 14 * 6.283; x.beginPath(); x.ellipse(C / 2 + Math.cos(a) * 13, 32 + Math.sin(a) * 13, 9, 5, a, 0, 6.283); x.fill(); }
+  x.fillStyle = '#f6d75a'; x.beginPath(); x.arc(C / 2, 32, 13, 0, 6.283); x.fill();
+  // clover
+  stem(C);
+  x.fillStyle = '#e6dce8';
+  for (let i = 0; i < 11; i++) { const a = i / 11 * 6.283; x.beginPath(); x.arc(C + C / 2 + Math.cos(a) * 10, 34 + Math.sin(a) * 9, 7, 0, 6.283); x.fill(); }
+  x.fillStyle = '#f4eef5'; x.beginPath(); x.arc(C + C / 2, 32, 10, 0, 6.283); x.fill();
+  // daisy
+  stem(C * 2);
+  x.fillStyle = '#fbf7ee';
+  for (let i = 0; i < 9; i++) { const a = i / 9 * 6.283; x.beginPath(); x.ellipse(C * 2 + C / 2 + Math.cos(a) * 12, 32 + Math.sin(a) * 12, 10, 5, a, 0, 6.283); x.fill(); }
+  x.fillStyle = '#f2c33c'; x.beginPath(); x.arc(C * 2 + C / 2, 32, 8, 0, 6.283); x.fill();
+  FLOWER_TEX = new THREE.CanvasTexture(c);
+  FLOWER_TEX.colorSpace = THREE.SRGBColorSpace;
+  return FLOWER_TEX;
+}
+function makeFlowerMaterial(mask, atlas, F) {
   return new THREE.ShaderMaterial({
-    uniforms: { uMask: { value: tex }, uWarm: { value: 0 }, uTracks: { value: trackTex } },
+    uniforms: { uMask: { value: mask }, uAtlas: { value: atlas }, uLot: F.uLotV, uTime: F.uTime, uWarm: F.uWarm, uCloudAmt: F.uCloudAmt },
+    side: THREE.DoubleSide, transparent: false,
+    vertexShader: `
+      attribute vec2 aOff; attribute vec4 aRnd;
+      uniform sampler2D uMask; uniform vec2 uLot; uniform float uTime;
+      varying vec2 vUv; varying float vCloud;
+      ${CLOUD_GLSL}
+      void main(){
+        vec4 m = texture2D(uMask, aOff / uLot);
+        float meta = m.b * 255.0;
+        float noG = step(249.0, meta);
+        float tier = mod(meta, 16.0);
+        float cut = step(0.9, m.r);
+        float high = step(0.25, m.r) * (1.0 - cut);
+        // gone the instant the deck reaches it; knocked down by a high-cut pass
+        float alive = (1.0 - cut) * (1.0 - noG) * step(1.5, tier) * (1.0 - high * 0.7);
+        float s = aRnd.x * alive;
+        float cy = cos(aRnd.y), sy = sin(aRnd.y);
+        vec3 p = position * s;
+        float yy = position.y * position.y;
+        float gust = max(sin(uTime * 0.55 - (aOff.x + aOff.y) * 0.14), 0.0);
+        float sway = sin(uTime * 1.2 + aRnd.w + aOff.x * 0.4) * 0.06 * (1.0 + gust * 1.4);
+        vec3 w;
+        w.x = aOff.x + (p.x * cy - p.z * sy) + yy * sway;
+        w.z = aOff.y + (p.x * sy + p.z * cy) + yy * sway * 0.5;
+        w.y = p.y;
+        vUv = vec2((uv.x + aRnd.z) / 3.0, uv.y);
+        vCloud = cloudShade(aOff, uTime);
+        gl_Position = projectionMatrix * modelViewMatrix * vec4(w, 1.0);
+      }`,
+    fragmentShader: `
+      uniform sampler2D uAtlas; uniform float uWarm;
+      varying vec2 vUv; varying float vCloud;
+      void main(){
+        vec4 t = texture2D(uAtlas, vUv);
+        if (t.a < 0.5) discard;
+        vec3 col = t.rgb * vCloud;
+        col = mix(col, col * vec3(1.12, 1.0, 0.82), uWarm * 0.55);
+        gl_FragColor = vec4(col, 1.0);
+      }`,
+  });
+}
+function makeOverlayMaterial(tex, trackTex, F) {
+  return new THREE.ShaderMaterial({
+    uniforms: { uMask: { value: tex }, uWarm: F.uWarm, uTracks: { value: trackTex }, uTime: F.uTime, uCloudAmt: F.uCloudAmt, uLot: F.uLotV },
     transparent: true, depthWrite: false,
     vertexShader: `varying vec2 vUv; void main(){ vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }`,
     fragmentShader: `
       uniform sampler2D uMask; uniform float uWarm; uniform sampler2D uTracks; varying vec2 vUv;
+      uniform float uTime; uniform vec2 uLot;
+      ${CLOUD_GLSL}
       float hash(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }
       void main(){
         // ⚠️ The plane's uv.y is 1 at worldZ=0 and 0 at worldZ=H (PlaneGeometry rotated -90°
@@ -359,6 +512,10 @@ function makeOverlayMaterial(tex, trackTex) {
           a = 0.42 + 0.12 * clamp((tier - 1.0) / 3.0, 0.0, 1.0);
         }
         col = mix(col, col * vec3(1.14, 1.02, 0.80), uWarm * 0.5);
+        // the overlay's uv.y is flipped against world Z (see the mask note above), so the
+        // cloud must be sampled at the same world point the blades used or the shadow
+        // would slide the other way across the lawn
+        col *= cloudShade(vec2(vUv.x * uLot.x, (1.0 - vUv.y) * uLot.y), uTime);
         float tr = texture2D(uTracks, vUv).r;
         col *= (1.0 - tr * 0.30);
         a = min(1.0, a + tr * 0.18);

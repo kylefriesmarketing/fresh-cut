@@ -5,6 +5,7 @@ import * as THREE from 'three';
 import { GrassField, ClipPool, CUT, HIGH, M_NOGRASS, M_WCLUMP, M_TRIM, mulberry, dotTex } from './grass.js';
 import { buildYard, makeMower, makeTrimmer, discoveryMesh } from './props.js';
 import { buildStreet } from './street.js';
+import { buildLife } from './life.js';
 import { jobDiscoveries } from './yards.js';
 import * as sfx from './sfx.js';
 
@@ -36,6 +37,7 @@ export class Game {
     // the street goes up after the yard so its windows join world.windows before the
     // light preset runs — then they warm with the house's at golden hour, for free
     this.world.street = buildStreet(scene, def, this.world, this.quality);
+    this.world.life = buildLife(scene, def, this.world, g, this.quality);
     g.finalize();
     this.clips = new ClipPool(scene, this.quality === 'low' ? 400 : 900);
 
@@ -271,8 +273,14 @@ export class Game {
       this.trimG.rotation.y = p.yaw;
       this.trimG.traverse(o => { if (o.userData.line) o.rotation.y += dt * (this.trimming ? 55 : 4); });
     }
-    // the street lives on the render frame only — headless jobs never run a car
+    // the street and the yard's own life live on the render frame only — headless jobs
+    // never run a car or an insect
     if (this.world.street) this.world.street.update(dt, sfx);
+    if (this.world.life) {
+      this.world.life.update(dt);
+      this.world.life.setWarm(this.warm);
+      if (mow && this.speedF > 0.25) this.world.life.scatter(mfx, mfz, 2.0);
+    }
     // last blade pulse
     this.lbT += dt;
     for (const s of this.lbSprites) { const k = 0.8 + Math.sin(this.lbT * 3 + s.userData.ph) * 0.25; s.scale.set(k, k, 1); }

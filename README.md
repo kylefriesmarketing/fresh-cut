@@ -13,6 +13,43 @@ Deploy = copy the whole folder to any static host (GitHub Pages works as-is).
 **F** high-cut lever (jungle grass needs it first) · hold **LMB** to trim ·
 **R** Pop's radio · **Z** zone list · **L** last-blade glow · **Esc** pause.
 
+## v1.9 (2026-08-11) — the art pass: light, weather and small living things
+
+- **`mow/post.js`** — a finishing pass: bloom on genuinely bright things, a colour grade
+  that warms with the afternoon, a little saturation, a soft vignette. Toggle in settings
+  ("Sunlight glow"), auto-off on Low quality or without WebGL2. The postcard renders
+  through it too.
+  ⚠️ **It hangs on one three.js fact**: tone mapping is applied only when the render target
+  is the canvas. The scene lands in the HDR target as LINEAR light and the *composite*
+  applies ACES + sRGB itself (`#include <tonemapping_fragment>` / `<colorspace_fragment>`,
+  needing `material.toneMapped = true`). That is why the base look is preserved instead of
+  graded twice — intermediates set `toneMapped = false`.
+  ⚠️ `sceneRT.samples = 4`, or post silently costs you the canvas's MSAA.
+  ⚠️ `threshold` is LINEAR and this is a bright world — too low and the **lawn** glows.
+- **Cloud shadows** — `CLOUD_GLSL` in grass.js, shared by the blades, the ground overlay
+  and the flowers so they darken as one patch. ⚠️ The first version MULTIPLIED two warped
+  sines, which clusters the field around 0.5: measured only **3–23%** of the lawn ever in
+  shadow. Summing them instead gives an even field — **25–32% shaded at any moment** with
+  the overall brightness steady (mean swing 0.017), so patches visibly cross rather than
+  the whole yard pulsing. ⚠️ The overlay must sample at `(vUv.x, 1-vUv.y) * lot` or its
+  shadow slides opposite the blades' (same flip as the v1.6 mask bug).
+- **Wildflowers that mow away** — dandelions, clover and daisies on instanced crossed
+  quads, placed only on tier ≥ 2 grass. The vertex shader collapses an instance the moment
+  its texel reads CUT, so removing them costs the CPU nothing and can never desync from the
+  cut. ~750 per yard. Verified by mesh-visibility diff: **663 flower pixels before mowing,
+  2 after**, and 0 of 306 instances still passing the mask rule.
+- **`mow/life.js`** — bees and butterflies that wander toward the parts still long and
+  **scatter from the running deck**, ~190 pollen motes drifting (brighter at golden hour),
+  and wind sway on every leafy prop canopy, driven by the same gust shape the grass shader
+  uses so the yard breathes together.
+- **Clouds** are much bigger and roughly 2.5× faster now, all three layers.
+
+View-only, all of it: `life.js` ticks from `Game.frame()` like street.js, so headless jobs
+run no insects. 24/24 jobs, 0 console errors.
+⚠️ Don't trust wall-clock timing for GPU cost here — measuring post on/off that way
+reported post as *faster*, which is impossible. Use `EXT_disjoint_timer_query_webgl2` if a
+real number is ever needed.
+
 ## v1.8 (2026-08-10) — the sound of the block
 
 Three new voices in the summer bed, all synthesized like everything else, all on the amb
