@@ -250,6 +250,27 @@ export const PROPS = {
     for (let i = 0; i < 6; i++) g.add(box(0.36, 0.5, 0.06, i % 2 ? 0xf4efe2 : (o.c || 0xd8534f), -1.0 + i * 0.4, 2.5, -1.0));
     return { g, col: [{ x: 0, z: 0, r: 1.35 }], noGrass: [{ x: 0, z: 0, r: 1.3 }], trim: [{ x: 0, z: 0, rIn: 1.3, rOut: 1.7 }] };
   },
+  parapet(o = {}) {   // the low wall round a roof — the thing that makes a roof read as a roof
+    const g = new THREE.Group();
+    const L = o.l || 6, h = o.h || 0.85;
+    g.add(box(0.34, h, L, o.c || 0xb0a695, 0, h / 2, 0));
+    g.add(box(0.44, 0.1, L, o.c2 || 0x8f8578, 0, h + 0.05, 0));   // coping stone
+    const col = []; for (let i = 0; i * 1.2 < L; i++) col.push({ x: 0, z: i * 1.2 - L / 2 + 0.6, r: 0.34 });
+    return { g, col, noGrass: col.map(c => ({ ...c, r: 0.3 })), trim: col.map(c => ({ x: c.x, z: c.z, rIn: 0.3, rOut: 0.7 })) };
+  },
+  backstop(o = {}) {  // ballpark: the tall mesh screen behind home plate
+    const g = new THREE.Group();
+    const w = o.w || 7, h = o.h || 3.4;
+    for (const sx of [-w / 2, 0, w / 2]) g.add(cyl(0.08, 0.09, h, 0x6f757a, sx, h / 2, 0, 6));
+    g.add(box(w, 0.09, 0.09, 0x6f757a, 0, h, 0));
+    const c = document.createElement('canvas'); c.width = 32; c.height = 32; const cx2 = c.getContext('2d');
+    cx2.strokeStyle = 'rgba(200,206,212,0.85)'; cx2.lineWidth = 2;
+    for (let i = -32; i < 64; i += 9) { cx2.beginPath(); cx2.moveTo(i, 0); cx2.lineTo(i + 32, 32); cx2.stroke(); cx2.beginPath(); cx2.moveTo(i + 32, 0); cx2.lineTo(i, 32); cx2.stroke(); }
+    const t = new THREE.CanvasTexture(c); t.wrapS = t.wrapT = THREE.RepeatWrapping; t.repeat.set(w / 1.2, h / 1.2);
+    const mesh = new THREE.Mesh(new THREE.PlaneGeometry(w, h), new THREE.MeshBasicMaterial({ map: t, transparent: true, side: THREE.DoubleSide, depthWrite: false }));
+    mesh.position.set(0, h / 2, 0); g.add(mesh);
+    return { g, col: [{ x: 0, z: 0, r: 0.4 }, { x: -w / 2, z: 0, r: 0.4 }, { x: w / 2, z: 0, r: 0.4 }], noGrass: [], trim: [{ x: 0, z: 0, rIn: 0.4, rOut: 0.9 }] };
+  },
   holeflag(o = {}) {
     const g = new THREE.Group();
     g.add(cyl(0.02, 0.02, 1.25, 0xf2ead8, 0, 0.62, 0, 5));
@@ -391,7 +412,7 @@ export function buildYard(scene, def, grass, quality) {
   for (let i = 0; i < 6; i++) { x.fillStyle = 'rgba(122,94,60,0.10)'; x.beginPath(); x.arc(rng() * c.width, rng() * c.height, 24 + rng() * 40, 0, 7); x.fill(); }
   // paths (flagstone)
   for (const p of def.paths || []) {
-    x.fillStyle = '#b9b2a4';
+    x.fillStyle = p.c || '#b9b2a4';   // dirt tracks and infields are not flagstone grey
     if (p.stones) {
       const n = Math.max(3, Math.round(Math.max(p.w, p.h) / 0.8));
       for (let i = 0; i < n; i++) {

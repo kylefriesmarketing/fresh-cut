@@ -55,6 +55,13 @@ export const TOUR = [
       { k: 'mound', x: 17, z: 12, r: 12, h: -0.5 },
     ] },
     tiers: [{ t: 'base', tier: 2 }, { t: 'rect', x: 0, z: 0, w: 34, h: 7, tier: 3 }, { t: 'rect', x: 0, z: 17, w: 34, h: 7, tier: 3 }],
+    // the dirt oval itself: two straights and two turns, laid ON the banking
+    paths: [
+      { x: 1.5, z: 1.5, w: 31, h: 3.4, c: '#8c6a4a' },
+      { x: 1.5, z: 19.1, w: 31, h: 3.4, c: '#8c6a4a' },
+      { x: 1.5, z: 1.5, w: 3.4, h: 21, c: '#8c6a4a' },
+      { x: 29.1, z: 1.5, w: 3.4, h: 21, c: '#8c6a4a' },
+    ],
     props: [
       { k: 'bleacher', x: 8, z: 2.2, o: { w: 7, rows: 5 } }, { k: 'bleacher', x: 24, z: 2.2, o: { w: 7, rows: 5 } },
       { k: 'tyrestack', x: 3.2, z: 8 }, { k: 'tyrestack', x: 3.2, z: 16, o: { c: 0xc0392b } },
@@ -151,7 +158,7 @@ export const TOUR = [
     id: 'rooftop', block: 5, tour: true, name: 'The Roof at Vance & Co.', client: 'Vance & Co. Building', who: 'PRIYA (FACILITIES)',
     blurb: "Six floors up, a lawn the size of a tennis court, laid over the roof of the old mill offices because someone read an article in 1998. It has planters, vents, a very short parapet, and the best breeze in town. The mower came up in the freight lift and it is going back down the same way.",
     pop: 'six floors up',
-    lot: { w: 22, h: 16 }, seed: 605, fence: 'rail', gate: { x: 2.4, w: 1.6 }, hood: 'city',
+    lot: { w: 22, h: 16 }, seed: 605, fence: 'none', gate: { x: 2.4, w: 1.6 }, hood: 'city',
     terrain: { features: [{ k: 'mound', x: 11, z: 8, r: 11, h: 0.35 }] },   // the roof falls away to its drains
     tiers: [{ t: 'base', tier: 2 }, { t: 'rect', x: 14, z: 9, w: 8, h: 7, tier: 3 }],
     props: [
@@ -160,6 +167,15 @@ export const TOUR = [
       { k: 'planter', x: 19.2, z: 3.4 }, { k: 'planter', x: 19.2, z: 5.8 },
       { k: 'chair', x: 11.2, z: 13.4, rot: 3.0 }, { k: 'chair', x: 12.8, z: 13.6, rot: 3.3 },
       { k: 'flowerbed', x: 11, z: 2.6 },
+      // the parapet: without it a roof is just a lawn that happens to be high up
+      ...[2.6, 8.0, 13.4, 18.8].flatMap(z => [
+        { k: 'parapet', x: 0.35, z, rot: 0, o: { l: 5.4 } },
+        { k: 'parapet', x: 21.65, z, rot: 0, o: { l: 5.4 } },
+      ]).filter(p => p.z < 16),
+      ...[2.6, 8.0, 13.4, 18.8].filter(x => x < 22).flatMap(x => [
+        { k: 'parapet', x, z: 0.35, rot: 1.571, o: { l: 5.4 } },
+        { k: 'parapet', x, z: 15.65, rot: 1.571, o: { l: 5.4 } },
+      ]),
     ],
     zones: [
       { x: 0, z: 0, w: 11, h: 8, name: 'The Vent Side' },
@@ -185,8 +201,17 @@ export const TOUR = [
     lot: { w: 38, h: 26 }, seed: 606, fence: 'chain', gate: { x: 19, w: 2.2 }, hood: 'openfield',
     terrain: { features: [{ k: 'mound', x: 19, z: 13, r: 20, h: 0.75 }] },   // the outfield crown, for drainage
     tiers: [{ t: 'base', tier: 2 }],
+    // the infield: home plate, the base paths and the warning track behind the bleachers
+    paths: [
+      { x: 15.5, z: 1.6, w: 7, h: 4.2, c: '#a8794f' },
+      { x: 8.5, z: 5.4, w: 21, h: 1.5, c: '#a8794f' },
+      { x: 8.5, z: 5.4, w: 1.5, h: 5.5, c: '#a8794f' },
+      { x: 28, z: 5.4, w: 1.5, h: 5.5, c: '#a8794f' },
+      { x: 8.5, z: 10.4, w: 21, h: 1.5, c: '#a8794f' },
+    ],
     props: [
       { k: 'bleacher', x: 8, z: 2.4, o: { w: 9, rows: 6 } }, { k: 'bleacher', x: 30, z: 2.4, o: { w: 9, rows: 6 } },
+      { k: 'backstop', x: 19, z: 0.9, o: { w: 8, h: 3.6 } },
       { k: 'flagpole', x: 19, z: 24.2 },
       { k: 'bench', x: 3.0, z: 6.0, rot: 1.571 }, { k: 'bench', x: 35.0, z: 6.0, rot: -1.571 },
       { k: 'hydrant', x: 36.4, z: 23.6 }, { k: 'wheelbarrow', x: 2.6, z: 23.2, rot: 0.5 },

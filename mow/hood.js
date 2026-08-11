@@ -199,8 +199,12 @@ export function buildHood(scene, def, world, quality) {
   // ---- the horizon, all the way round, so no angle is bare ----
   // open water, laid before the ring so the far bank sits on top of it
   if (P.far.includes('water')) {
-    const w = new THREE.Mesh(new THREE.PlaneGeometry(260, 190), mat(0x5d8ea8));
-    w.rotation.x = -Math.PI / 2; w.position.set(cx, -0.06, cz - 108); root.add(w);
+    // ⚠️ above the surround aprons (y -0.03) or they show THROUGH the water as a green band
+    const w = new THREE.Mesh(new THREE.PlaneGeometry(300, 220), mat(0x5d8ea8));
+    w.rotation.x = -Math.PI / 2; w.position.set(cx, -0.012, cz - 118); root.add(w);
+    // a shoreline strip so the water doesn't just stop at a hard line
+    const sh = new THREE.Mesh(new THREE.PlaneGeometry(300, 5), mat(0x9aa88f));
+    sh.rotation.x = -Math.PI / 2; sh.position.set(cx, -0.008, cz - 9.5); root.add(sh);
     for (let i = 0; i < 7; i++) {   // low hills across the water
       const hl = new THREE.Group();
       const r = 16 + rng() * 14;
