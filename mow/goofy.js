@@ -263,12 +263,16 @@ export const GOOFY = [
     blurb: "The world's second-largest ball of twine sits in a field off Route 9 under a shelter, and the field around it is municipal responsibility, which is to say it is Ray's, which is to say it is now yours. The ball is nine metres across. The grass around it goes uphill in every direction, because the ball made a hill.",
     pop: 'second-largest, and honest about it',
     lot: { w: 34, h: 26 }, seed: 710, fence: 'chain', gate: { x: 16.5, w: 2.2 }, hood: 'openfield',
-    hero: [{ k: 'ball', x: 0, z: -26, s: 2.0, lift: 0.32 }],
+    hero: [{ k: 'ball', x: 0, z: -38, s: 1.15, lift: 0.32 }],
     palette: { sky: 0xf2c98a, fog: 0xe6b877, hemi: 0xffe8c0, sun: 0xffdca0, hemiI: 1.05, fogNear: 44, fogFar: 190 },
     terrain: { features: [{ k: 'mound', x: 17, z: 13, r: 12, h: 2.6 }, { k: 'ridge', x1: 0, z1: 24, x2: 34, z2: 24, w: 3, h: 0.7 }] },
     tiers: [{ t: 'base', tier: 3 }, { t: 'circle', x: 17, z: 13, r: 5, tier: 2 }],
     props: [
-      { k: 'fountain', x: 17, z: 13, s: 3.2 },
+      // ⚠️ was s: 3.2 — a placeholder for the ball before the hero existed. At that scale it
+      // sat on the mound directly in front of the spawn and filled the top of the frame with
+      // a dark mass I twice mistook for a treeline and once for the sky. The ball is the
+      // landmark now; this is just the fountain the visitors' committee put in.
+      { k: 'fountain', x: 17, z: 13, s: 1.0 },
       { k: 'booth', x: 5, z: 22, rot: 0.5 }, { k: 'bench', x: 17, z: 21.4, rot: 3.14 },
       { k: 'flagpole', x: 29, z: 22 }, { k: 'tyrestack', x: 3.4, z: 4 }, { k: 'tyrestack', x: 30.6, z: 4 },
       { k: 'wheelbarrow', x: 31, z: 24, rot: 2.4 },

@@ -324,9 +324,16 @@ export function buildHood(scene, def, world, quality) {
     const s = h.s || 1;
     if (h.k === 'ball') {                       // a colossal ball of twine, on its shelter
       const b = sph(9 * s, h.c || 0xc9a86a, 0, 9 * s, 0, 16); g.add(b);
-      for (let i = 0; i < 14; i++) {            // wound bands, so it reads as twine
-        const r = new THREE.Mesh(new THREE.TorusGeometry(9 * s * (0.99 - Math.abs(i - 7) * 0.02), 0.30 * s, 5, 26), mat(0xb08f52));
-        r.position.y = 9 * s + (i - 7) * 1.2 * s; r.rotation.x = Math.PI / 2 + (i - 7) * 0.03; g.add(r);
+      // wound bands. ⚠️ Their radius must follow the SPHERE'S SILHOUETTE — sqrt(R²-dy²) —
+      // not a linear taper, or near the poles the bands stand proud of the ball and you
+      // see straight through the gap into a hollow shell.
+      const R = 9 * s;
+      for (let i = 0; i < 15; i++) {
+        const dy = (i - 7) * (R * 0.125);
+        const rr = Math.sqrt(Math.max(0.0001, R * R - dy * dy)) * 1.005;
+        if (rr < 0.6 * s) continue;
+        const r = new THREE.Mesh(new THREE.TorusGeometry(rr, 0.26 * s, 5, 26), mat(0xb08f52));
+        r.position.y = R + dy; r.rotation.x = Math.PI / 2 + (i - 7) * 0.02; g.add(r);
       }
       g.add(cyl(11 * s, 11 * s, 0.7 * s, 0x9c968a, 0, 0.35 * s, 0, 18));
       // ⚠️ NO SHELTER ROOF. It was a 28m cone at y34 — from anywhere on the lot it read as
