@@ -63,12 +63,15 @@ function quadZones(W, H, names) {
 }
 
 // ---------- THE NOTEBOOK ----------
+import { TOUR } from './tour.js';
+
 export const BLOCKS = [
   { name: 'The Route', sub: "Pop's people. They're yours now." },
   { name: 'The Favors', sub: 'Word gets around in a town this size.' },
   { name: 'The Rescues', sub: 'The yards nobody asked you to fix.' },
   { name: 'The Landmarks', sub: 'When the town itself calls.' },
   { name: 'After the Route', sub: 'The weird calls. Pop kept a separate page.' },
+  { name: 'The Wider Job Book', sub: 'Ten places that are not somebody\'s front lawn.' },
 ];
 
 export const JOBS = [
@@ -774,6 +777,8 @@ export const JOBS = [
       reply: "(You finish. The stripes are perfect. The sky ripples once — approval? — and your postcard is already in the mailbox, stamped RETURN TO SENDER, with one addition in that careful hand: a heart. You take the long way home. The long way exists again.)",
     },
   },
+  // THE WIDER JOB BOOK — ten places that are not somebody's front lawn (block 5)
+  ...TOUR,
 ];
 
 // ---------- gear unlock schedule ----------

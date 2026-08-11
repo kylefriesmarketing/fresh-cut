@@ -13,6 +13,36 @@ Deploy = copy the whole folder to any static host (GitHub Pages works as-is).
 **F** high-cut lever (jungle grass needs it first) · hold **LMB** to trim ·
 **R** Pop's radio · **Z** zone list · **L** last-blade glow · **Esc** pause.
 
+## v1.13 (2026-08-11) — THE WIDER JOB BOOK: ten new maps
+
+A second campaign (`mow/tour.js`, block 5, `tour: true`), unlocked from the start. Ten
+grounded-but-characterful places, every one using the heightfield, built around the three
+mechanics Kyle picked: **shaped ground, patterns, trimmer-forward**.
+
+| map | the hook | shape |
+|---|---|---|
+| The Bellamy Maze | 1931 hedge maze — the deck does not fit, this is the trimmer's day | crowned lawn |
+| Hazel Park Speedway | mow the banking of a dirt oval, across the slope not up it | two 1.9 m banks + sunk infield |
+| The Reservoir Bank | the steepest thing in the game; the town's drinking water is behind it | 3.55 m earthen bank |
+| The Old Quarry Steps | four limestone terraces, each flat as a table | three `step` features, 4.2 m total |
+| The Roof at Vance & Co. | a lawn six floors up, threaded between vents and planters | roof falling to its drains |
+| Cutter Field | a real ballpark: six alternating bands, and it's on the news Friday | outfield crown |
+| The Ninth at Ridgeway | municipal golf; humps, a hollow, and a green you do last and slow | 4 mounds + a bowl |
+| The Fairground, Monday | the fair left Sunday; mow the ride pads before they set that way | two pressed hollows |
+| The Vesper Orchard | eleven rows on a south slope, ninety-odd trunks by hand | hillside + rise |
+| The 3AM Contract | a field, a time, and a shape drawn on an envelope | five mounds and a ring |
+
+Also **fixes a silent pre-existing bug**: the Odd Jobs referenced prop kinds nobody ever
+built (`windmill`, `holeflag`, `gravestone`) — `PROPS[p.k]` returned undefined and the
+loop skipped them, so the Putt Hutt had no windmill and no flags and the cemetery had no
+headstones. Those three now exist, along with `hedgewall`, `bleacher`, `tyrestack`,
+`statue`, `fountain`, `acunit` and `booth`.
+
+Verified: **34/34 jobs complete at 100%**, all ten carry terrain, 0 console errors.
+⚠️ Not yet done: a visual/framing pass over the ten (they verify functionally but haven't
+been art-directed), and pattern *scoring* — the band layouts shape how you mow, but nothing
+yet measures how well you matched a pattern.
+
 ## v1.12 (2026-08-11) — `mow/terrain.js`: the ground has shape
 
 The foundation for the new campaign of unusual maps. A lot can now have mounds, hollows,

@@ -189,6 +189,92 @@ export const PROPS = {
     g.add(sph(0.2, o.c || 0x50803a, 0, 0.4, 0, 8));
     return { g, col: [{ x: 0, z: 0, r: 0.24 }], noGrass: [], trim: [] };
   },
+  // ---- props for the Wider Job Book (and the Odd Jobs that referenced kinds nobody built:
+  // windmill, holeflag and gravestone were silently skipped by the PROPS lookup) ----
+  hedgewall(o = {}) {   // a maze wall. Long, solid, and the mower will not fit through it.
+    const g = new THREE.Group();
+    const L = o.l || 4, h = o.h || 1.5;
+    for (let i = 0; i * 0.8 < L; i++) {
+      g.add(sph(0.62 + Math.sin(i * 2.3) * 0.06, o.c || 0x2f5b2a, 0, h - 0.55, i * 0.8 - L / 2, 7));
+      g.add(sph(0.58, o.c || 0x35632e, 0, h - 1.05, i * 0.8 - L / 2, 6));
+    }
+    g.add(box(0.9, h - 0.5, L, 0x2a4f26, 0, (h - 0.5) / 2, 0));
+    const col = []; for (let i = 0; i * 1.0 < L; i++) col.push({ x: 0, z: i * 1.0 - L / 2, r: 0.6 });
+    return { g, col, noGrass: col.map(c => ({ ...c, r: 0.5 })), trim: col.map(c => ({ x: c.x, z: c.z, rIn: 0.5, rOut: 0.95 })) };
+  },
+  bleacher(o = {}) {
+    const g = new THREE.Group();
+    const w = o.w || 6, rows = o.rows || 4;
+    for (let r = 0; r < rows; r++) {
+      g.add(box(w, 0.12, 0.62, 0xa8a49a, 0, 0.38 + r * 0.42, -r * 0.62));
+      g.add(box(w, 0.34, 0.1, 0x8f8b82, 0, 0.55 + r * 0.42, -r * 0.62 - 0.3));
+    }
+    for (const sx of [-w / 2 + 0.2, w / 2 - 0.2]) g.add(box(0.12, 0.4 + rows * 0.42, 0.12, 0x6f6b63, sx, (0.4 + rows * 0.42) / 2, -rows * 0.31));
+    return { g, col: [{ x: 0, z: -rows * 0.31, r: Math.max(1.4, w * 0.42) }], noGrass: [{ x: 0, z: -rows * 0.31, r: w * 0.4 }], trim: [{ x: 0, z: -rows * 0.31, rIn: w * 0.4, rOut: w * 0.5 }] };
+  },
+  tyrestack(o = {}) {
+    const g = new THREE.Group();
+    const n = o.n || 3;
+    for (let i = 0; i < n; i++) { const t = new THREE.Mesh(new THREE.TorusGeometry(0.42, 0.16, 6, 12), mat(0x24262a)); t.rotation.x = Math.PI / 2; t.position.y = 0.18 + i * 0.3; g.add(t); }
+    if (o.c) g.add(cyl(0.3, 0.3, 0.06, o.c, 0, 0.18 + n * 0.3, 0, 10));
+    return { g, col: [{ x: 0, z: 0, r: 0.6 }], noGrass: [{ x: 0, z: 0, r: 0.55 }], trim: [{ x: 0, z: 0, rIn: 0.55, rOut: 0.9 }] };
+  },
+  statue(o = {}) {
+    const g = new THREE.Group();
+    g.add(box(1.0, 0.22, 1.0, 0x9c968a, 0, 0.11, 0));
+    g.add(box(0.72, 0.5, 0.72, 0xa9a396, 0, 0.47, 0));
+    g.add(cyl(0.17, 0.22, 1.15, o.c || 0x8e9aa0, 0, 1.29, 0, 8));
+    g.add(sph(0.2, o.c || 0x8e9aa0, 0, 2.0, 0, 8));
+    return { g, col: [{ x: 0, z: 0, r: 0.72 }], noGrass: [{ x: 0, z: 0, r: 0.7 }], trim: [{ x: 0, z: 0, rIn: 0.7, rOut: 1.15 }] };
+  },
+  fountain() {
+    const g = new THREE.Group();
+    g.add(cyl(1.5, 1.6, 0.42, 0xb3ada0, 0, 0.21, 0, 16));
+    const w = new THREE.Mesh(new THREE.CircleGeometry(1.36, 16), mat(0x6fb3c4)); w.rotation.x = -Math.PI / 2; w.position.y = 0.36; g.add(w);
+    g.add(cyl(0.2, 0.26, 0.9, 0xb3ada0, 0, 0.85, 0, 10));
+    g.add(cyl(0.62, 0.5, 0.14, 0xb3ada0, 0, 1.35, 0, 12));
+    return { g, col: [{ x: 0, z: 0, r: 1.66 }], noGrass: [{ x: 0, z: 0, r: 1.62 }], trim: [{ x: 0, z: 0, rIn: 1.62, rOut: 2.0 }] };
+  },
+  acunit() {   // rooftop plant
+    const g = new THREE.Group();
+    g.add(box(1.5, 0.9, 1.2, 0xa9aeb2, 0, 0.45, 0));
+    g.add(box(1.1, 0.08, 0.9, 0x8d9298, 0, 0.93, 0));
+    const f = new THREE.Mesh(new THREE.TorusGeometry(0.32, 0.05, 5, 12), mat(0x6f757a)); f.position.set(0, 0.95, 0); f.rotation.x = Math.PI / 2; g.add(f);
+    return { g, col: [{ x: 0, z: 0, r: 1.0 }], noGrass: [{ x: 0, z: 0, r: 0.95 }], trim: [{ x: 0, z: 0, rIn: 0.95, rOut: 1.35 }] };
+  },
+  booth(o = {}) {
+    const g = new THREE.Group();
+    g.add(box(2.0, 2.3, 1.8, o.c || 0xd8534f, 0, 1.15, 0));
+    g.add(box(2.4, 0.16, 2.2, 0xf2ead8, 0, 2.35, 0));
+    g.add(box(1.2, 0.7, 0.08, 0x2b3a44, 0, 1.5, -0.92));
+    for (let i = 0; i < 6; i++) g.add(box(0.36, 0.5, 0.06, i % 2 ? 0xf4efe2 : (o.c || 0xd8534f), -1.0 + i * 0.4, 2.5, -1.0));
+    return { g, col: [{ x: 0, z: 0, r: 1.35 }], noGrass: [{ x: 0, z: 0, r: 1.3 }], trim: [{ x: 0, z: 0, rIn: 1.3, rOut: 1.7 }] };
+  },
+  holeflag(o = {}) {
+    const g = new THREE.Group();
+    g.add(cyl(0.02, 0.02, 1.25, 0xf2ead8, 0, 0.62, 0, 5));
+    const f = box(0.34, 0.24, 0.02, o.c || 0xc0392b, 0.17, 1.12, 0); g.add(f);
+    g.add(cyl(0.14, 0.14, 0.03, 0x2b2b2b, 0, 0.015, 0, 12));
+    return { g, col: [{ x: 0, z: 0, r: 0.16 }], noGrass: [{ x: 0, z: 0, r: 0.16 }], trim: [] };
+  },
+  windmill() {
+    const g = new THREE.Group();
+    g.add(box(1.1, 2.2, 1.1, 0xe4dbc6, 0, 1.1, 0));
+    const r = gableRoof(1.2, 1.2, 0.5, 0xc0392b, 0xe4dbc6); r.position.y = 2.2; g.add(r);
+    const hub = new THREE.Group(); hub.position.set(0, 1.7, -0.62);
+    for (let i = 0; i < 4; i++) { const b = box(0.16, 1.15, 0.05, 0xf4efe2, 0, 0.6, 0); b.rotation.z = i * Math.PI / 2; const p = new THREE.Group(); p.rotation.z = i * Math.PI / 2; p.add(box(0.16, 1.15, 0.05, 0xf4efe2, 0, 0.6, 0)); hub.add(p); }
+    hub.userData.spin = 0.7; g.add(hub);
+    return { g, col: [{ x: 0, z: 0, r: 0.85 }], noGrass: [{ x: 0, z: 0, r: 0.8 }], trim: [{ x: 0, z: 0, rIn: 0.8, rOut: 1.2 }] };
+  },
+  gravestone(o = {}) {
+    const g = new THREE.Group();
+    const h = o.h || 0.8;
+    g.add(box(0.62, 0.12, 0.34, 0x9c968a, 0, 0.06, 0));
+    const s = box(0.5, h, 0.16, o.c || 0xa9a396, 0, 0.12 + h / 2, 0);
+    s.rotation.z = (o.lean || 0); g.add(s);
+    if (o.cross) { g.add(box(0.12, 0.5, 0.12, o.c || 0xa9a396, 0, 0.12 + h + 0.25, 0)); g.add(box(0.4, 0.12, 0.12, o.c || 0xa9a396, 0, 0.12 + h + 0.3, 0)); }
+    return { g, col: [{ x: 0, z: 0, r: 0.34 }], noGrass: [{ x: 0, z: 0, r: 0.32 }], trim: [{ x: 0, z: 0, rIn: 0.32, rOut: 0.72 }] };
+  },
   wheelbarrow() {
     const g = new THREE.Group();
     const tub = new THREE.Mesh(new THREE.CylinderGeometry(0.42, 0.28, 0.3, 10, 1, false, 0, Math.PI * 2), mat(0x3e7247)); tub.position.y = 0.38; tub.scale.z = 0.65; g.add(tub);
