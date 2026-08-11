@@ -268,11 +268,12 @@ export const GOOFY = [
     terrain: { features: [{ k: 'mound', x: 17, z: 13, r: 12, h: 2.6 }, { k: 'ridge', x1: 0, z1: 24, x2: 34, z2: 24, w: 3, h: 0.7 }] },
     tiers: [{ t: 'base', tier: 3 }, { t: 'circle', x: 17, z: 13, r: 5, tier: 2 }],
     props: [
-      // ⚠️ was s: 3.2 — a placeholder for the ball before the hero existed. At that scale it
-      // sat on the mound directly in front of the spawn and filled the top of the frame with
-      // a dark mass I twice mistook for a treeline and once for the sky. The ball is the
-      // landmark now; this is just the fountain the visitors' committee put in.
-      { k: 'fountain', x: 17, z: 13, s: 1.0 },
+      // ⚠️ NO FOUNTAIN HERE. It was a placeholder for the ball before the hero system, at
+      // s: 3.2, and it sat on the summit of the centre mound directly ahead of spawn — the
+      // dark mass I mistook for a treeline, then a shelter roof, then the sky itself.
+      // Isolation (hide one group, re-sample) pinned it three separate times. Even at 1.0
+      // it still owned the middle of the frame and hid the ball. The ball is the landmark.
+      { k: 'bench', x: 12.4, z: 15.6, rot: 2.6 },
       { k: 'booth', x: 5, z: 22, rot: 0.5 }, { k: 'bench', x: 17, z: 21.4, rot: 3.14 },
       { k: 'flagpole', x: 29, z: 22 }, { k: 'tyrestack', x: 3.4, z: 4 }, { k: 'tyrestack', x: 30.6, z: 4 },
       { k: 'wheelbarrow', x: 31, z: 24, rot: 2.4 },
