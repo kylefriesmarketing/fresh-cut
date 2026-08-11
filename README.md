@@ -13,6 +13,27 @@ Deploy = copy the whole folder to any static host (GitHub Pages works as-is).
 **F** high-cut lever (jungle grass needs it first) · hold **LMB** to trim ·
 **R** Pop's radio · **Z** zone list · **L** last-blade glow · **Esc** pause.
 
+## ⏭️ NEXT SESSION — Kyle's standing brief (given 2026-08-11, NOT started)
+
+The Odd Sizes are now the visual benchmark. Kyle asked for two things next, and expects a
+long continuous push:
+
+1. **Bring the ORIGINAL campaign maps up to the same standard** — the 19 main-book pages
+   and the 4 Odd Jobs. They still have the v1.11 treatment: a hood archetype and nothing
+   else. What the Odd Sizes have that they don't:
+   - `def.hero` set-pieces (hood.js kinds: `ball` `chess` `can` `door` `gnome` `pagoda`
+     `village` `manor` — each is ~15 lines, and this is by far the best wow-per-effort
+     lever available)
+   - `def.palette` (sky/fog/hemi/ground/sun/hemiI/sunI/fogNear/fogFar) so each map has its
+     own light instead of the stock blue
+   - ⚠️ Keep the QUIET tone for these — they are Pop's route, not the goofy book. Palettes
+     should be gentle time-of-day/weather shifts, and heroes should be things a real town
+     has: a grain elevator, a church spire, a mill chimney, a water tower, a hospital block.
+2. **A visual pass on the MOWERS themselves** (`makeMower` in props.js). All seven are
+   boxes with cylinder wheels and no detail: no grass chute, no engine pull-cord, no cable,
+   no levers, no branding, no wear. The player looks at this object for the entire game.
+   Earned paint (`save.paint`) already drives the deck colour on push/self/wide/rider.
+
 ## v1.14 – v1.19 (2026-08-11) — backdrops, a fourth book, and pattern scoring
 
 **v1.14 — backdrops match the location.** Five non-residential hood archetypes
