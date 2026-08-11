@@ -463,6 +463,10 @@ battery; resume byte-matches; jungle lever enforced; postcards render both sides
 ## Invariants (do not break)
 
 1. **No fail states.** Nothing can be damaged; no fuel/durability/money-per-job.
+   ⚠️ **Re-affirmed by Kyle 2026-08-11, explicitly.** The question was raised directly —
+   money for jobs and a hardware store — and the answer was no. Rewards are earned by
+   doing the work: trophies (The Shelf), earned mower paint, and career gear unlocks.
+   **There is no wallet in this game.** Do not add one; this was decided on purpose.
 2. **The ding never stacks** (120 ms cooldown in `Game.update`).
 3. Cut grass never un-cuts inside a job. Every second is banked.
 4. Mercy: zones auto-round at ≥97%. Last Blade is a *toggle*, not sonar.
