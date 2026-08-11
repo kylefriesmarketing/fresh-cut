@@ -58,7 +58,7 @@ export class Game {
     this.p = { x: gate.x + (gate.w || 1.4) / 2, z: 2.0, y: 0, yaw: 0, pitch: -0.42, vx: 0, vz: 0 };
     this.p.y = this.terrain.heightAt(this.p.x, this.p.z);
     this.tool = 'mow'; this.highCut = false; this.load = 0; this.speedF = 0;
-    this.mowerG = makeMower(this.gearKey); scene.add(this.mowerG);
+    this.mowerG = makeMower(this.gearKey, opts.paint || null); scene.add(this.mowerG);
     this.mowerOff = this.gearKey === 'rider' ? 0.4 : 0.86; // how far ahead of the player the mower rides
     // where the CUT lands: the drawn deck's own centre. These must agree or the cut line
     // floats ahead of the mower as you push (it used to be a flat 1.02 for every gear).

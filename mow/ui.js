@@ -1,6 +1,7 @@
 // FRESH CUT — ui.js
 // The notebook is the meta-UI. The HUD is four quiet things. Story arrives as texts you can ignore.
 import { JOBS, BLOCKS, GEAR_UNLOCKS } from './yards.js';
+import { TROPHIES, earnedPaints, ensure as ensureTrophies } from './trophies.js';
 import { GEARS } from './game.js';
 
 const $ = (id) => document.getElementById(id);
@@ -105,6 +106,37 @@ export function wireNotebookTabs() {
     document.querySelectorAll('.nb-tab').forEach(x => x.classList.toggle('on', x === t));
     $('nb-jobs').classList.toggle('hidden', t.dataset.tab !== 'jobs');
     $('nb-pegboard').classList.toggle('hidden', t.dataset.tab !== 'pegboard');
+    $('nb-shelf').classList.toggle('hidden', t.dataset.tab !== 'shelf');
+  });
+}
+// The shelf in the garage: what you've earned, and the paint it came with. Locked rows
+// still show their name and how to get them — nothing here is a secret, it's a to-do list.
+export function renderShelf(save, onPaint) {
+  ensureTrophies(save);
+  const got = new Set(save.trophies);
+  let h = `<div class="pegnote">${got.size} of ${TROPHIES.length} on the shelf</div>`;
+  for (const t of TROPHIES) {
+    const on = got.has(t.id);
+    h += `<div class="jobrow" style="${on ? '' : 'opacity:.5'}">
+      <div class="st" style="${on ? 'color:#c0392b' : ''}">${on ? '🏆' : '▢'}</div>
+      <div class="who"><div class="nm">${t.name}</div><span class="margin">${t.note}</span></div>
+      <div class="meta">${t.paint ? (on ? 'paint earned' : 'paint') : ''}</div>
+    </div>`;
+  }
+  const paints = earnedPaints(save);
+  h += `<div class="blockhead">The Paint Tin</div><div id="paint-row" style="display:flex;gap:10px;flex-wrap:wrap;padding:6px 2px">`;
+  for (const p of paints) {
+    const sel = (save.paint || null) === (p.c || null);
+    const swatch = p.c === null ? 'linear-gradient(135deg,#c0392b 50%,#e8e3d8 50%)' : '#' + p.c.toString(16).padStart(6, '0');
+    h += `<button class="mbtn small paint-pick" data-c="${p.c === null ? '' : p.c}" title="${p.name}"
+      style="width:44px;height:34px;background:${swatch};border:2px solid ${sel ? '#c0392b' : 'rgba(61,52,40,.35)'}"></button>`;
+  }
+  h += `</div><div class="pegnote">Paint is earned, never bought. It shows on the walk-behind mowers.</div>`;
+  $('shelf-list').innerHTML = h;
+  document.querySelectorAll('.paint-pick').forEach(b => b.onclick = () => {
+    const v = b.dataset.c;
+    onPaint(v === '' ? null : parseInt(v, 10));
+    renderShelf(save, onPaint);
   });
 }
 

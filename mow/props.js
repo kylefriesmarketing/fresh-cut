@@ -332,9 +332,12 @@ export function discoveryMesh(kind) {
 }
 
 // ---------------- mowers & trimmer ----------------
-export function makeMower(gear) {
+export function makeMower(gear, paint) {
   const g = new THREE.Group();
-  const deckC = { push: 0xc0392b, self: 0x3e7247, wide: 0xe8792c, rider: 0xc0392b, titan: 0x8e44ad, hover: 0x2f9fb5, tweezer: 0xd8a23f }[gear] || 0xc0392b;
+  // earned paint overrides the factory colour on the walk-behinds; the odd-size machines
+  // keep their own livery so they stay recognisable as the special gear
+  const stock = { push: 0xc0392b, self: 0x3e7247, wide: 0xe8792c, rider: 0xc0392b, titan: 0x8e44ad, hover: 0x2f9fb5, tweezer: 0xd8a23f }[gear] || 0xc0392b;
+  const deckC = (paint && ['push', 'self', 'wide', 'rider'].includes(gear)) ? paint : stock;
   const w = { push: 0.55, self: 0.55, wide: 0.78, rider: 1.15, titan: 2.2, hover: 0.95, tweezer: 0.22 }[gear] || 0.55;
   if (gear === 'rider') {
     g.add(box(w * 0.8, 0.3, 1.5, deckC, 0, 0.42, 0.1));

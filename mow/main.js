@@ -7,6 +7,7 @@ import { JOBS, GEAR_UNLOCKS, dailyDef } from './yards.js';
 import * as ui from './ui.js';
 import * as sfx from './sfx.js';
 import { makePost } from './post.js';
+import { award, ensure as ensureTrophies } from './trophies.js';
 
 // ---------- renderer ----------
 const renderer = new THREE.WebGLRenderer({ antialias: true, preserveDrawingBuffer: false });
@@ -38,7 +39,7 @@ function loadSave() {
   try { const s = JSON.parse(localStorage.getItem(SAVE_KEY)); if (s && s.v === 1) return s; } catch (_) { }
   return { v: 1, done: {}, pegboard: [], jar: 0, resume: null, settings: { veng: 70, vamb: 80, vrad: 65, sens: 100, invy: false, bob: true, postfx: true, qual: 'auto' } };
 }
-const save = loadSave();
+const save = ensureTrophies(loadSave());
 function persist() { try { localStorage.setItem(SAVE_KEY, JSON.stringify(save)); } catch (_) { } }
 function quality() {
   const q = save.settings.qual;
@@ -92,6 +93,7 @@ document.addEventListener('pointerlockchange', () => {
 let zonesVisible = false;
 function openNotebook() {
   ui.renderNotebook(save, pickJob);
+  ui.renderShelf(save, (c) => { save.paint = c; persist(); });
   ui.show('notebook'); ui.hide('title');
 }
 function pickJob(id) {
@@ -108,7 +110,7 @@ function beginJob(def, gear) {
   DEF = def; midFired = [];
   scene = new THREE.Scene();
   G = new Game(scene, def, {
-    gear, quality: quality(), cb: {
+    gear, quality: quality(), paint: save.paint || null, cb: {
       pct: p => { ui.setPct(p, def.name); checkMidTexts(p); },
       zone: (name, done, total) => ui.zoneBanner(name, done, total),
       hint: t => ui.hint(t),
@@ -166,6 +168,15 @@ function onComplete(stats) {
     save.dailyDone = todayStr();
   }
   save.resume = null;
+  // the shelf: fold this run into the lifetime totals and see what it earned
+  const won = award(save, {
+    dist: stats.dist, time: stats.time, bags: G ? G.bagsEmptied : 0,
+    pattern: stats.pattern, found: stats.found, totalDisc: stats.totalDisc, gear: G ? G.gearKey : null,
+  });
+  for (let i = 0; i < won.length; i++) {
+    const t = won[i];
+    setTimeout(() => ui.sms('THE SHELF', `🏆 ${t.name} — ${t.note}${t.paint ? ' (a tin of paint came with it)' : ''}`, false), 900 + i * 1500);
+  }
   persist();
   // gear unlock crossing?
   const doneAfter = ui.countCampaignDone(save);
