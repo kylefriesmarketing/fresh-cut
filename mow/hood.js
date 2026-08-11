@@ -358,6 +358,53 @@ export function buildHood(scene, def, world, quality) {
       g.add(box(11 * s, 22 * s, 0.9 * s, h.door || 0x7a4a33, 0, 11 * s, 0.9 * s));
       g.add(sph(1.1 * s, 0xd9b44a, 3.6 * s, 11 * s, 1.5 * s, 10));
       g.add(box(28 * s, 2.2 * s, 3.4 * s, 0x8f8578, 0, 34 * s, 0.6 * s));
+    } else if (h.k === 'pagoda') {              // a castle keep, tiered, above the bonsai
+      g.add(box(34 * s, 11 * s, 27 * s, 0xb9b2a4, 0, 5.5 * s, 0));          // stone base
+      g.add(box(30 * s, 1.6 * s, 23 * s, 0x8f8578, 0, 11.6 * s, 0));
+      for (let t = 0; t < 4; t++) {
+        const w = (24 - t * 4.4) * s, d = (18 - t * 3.2) * s, y = 12.4 * s + t * 7.4 * s;
+        g.add(box(w, 5.4 * s, d, 0xf4efe2, 0, y + 2.7 * s, 0));             // plaster storey
+        for (let k = 0; k < 3; k++) g.add(box(w * 0.16, 3.2 * s, 0.3 * s, 0x3f4750, (k - 1) * w * 0.3, y + 2.9 * s, d / 2 + 0.2 * s));
+        const roof = cone(Math.hypot(w, d) * 0.66, 3.6 * s, h.roof || 0x39434c, 0, y + 7.3 * s, 0, 4);
+        roof.rotation.y = Math.PI / 4; g.add(roof);
+        g.add(box(w + 3.4 * s, 0.6 * s, d + 3.4 * s, 0x2b3138, 0, y + 5.5 * s, 0));  // flared eave
+      }
+      g.add(cyl(0.55 * s, 0.55 * s, 6 * s, 0xd9b44a, 0, 45 * s, 0, 8));
+      g.add(sph(1.3 * s, 0xd9b44a, 0, 48 * s, 0, 10));
+    } else if (h.k === 'village') {             // a fairy-tale village, roofs like witches' hats
+      for (let i = 0; i < 10; i++) {
+        const a = (i / 10) * 6.283 + 0.3, rad = (13 + ((i * 37) % 11)) * s;
+        const w = (4.4 + ((i * 13) % 3)) * s, hh = (5 + ((i * 7) % 4)) * s;
+        const body = [0xe8dfc9, 0xdcc9b0, 0xd8c0a8, 0xe4d2b8][i % 4];
+        const roofC = [0x8f5a3f, 0x6b4a38, 0x7a5240, 0x5e4433][i % 4];
+        const cot = new THREE.Group();
+        cot.add(box(w, hh, w * 0.9, body, 0, hh / 2, 0));
+        cot.add(cone(w * 0.86, hh * 1.35, roofC, 0, hh + hh * 0.66, 0, 7));   // steep pointed roof
+        cot.add(box(w * 0.24, hh * 0.46, 0.25 * s, 0x5e4a35, 0, hh * 0.23, w * 0.46));
+        cot.add(box(w * 0.2, w * 0.2, 0.2 * s, 0xf2d98a, -w * 0.28, hh * 0.62, w * 0.46));
+        cot.add(box(0.7 * s, 2 * s, 0.7 * s, 0x9a7360, w * 0.3, hh + 1.1 * s, 0));
+        cot.position.set(Math.sin(a) * rad, 0, Math.cos(a) * rad * 0.55);
+        cot.rotation.y = a + Math.PI;
+        g.add(cot);
+      }
+      for (let i = 0; i < 6; i++) {              // toadstools, because it is that kind of village
+        const a = i * 1.21, r = (19 + i * 2.2) * s;
+        const x = Math.sin(a) * r, z = Math.cos(a) * r * 0.55;
+        g.add(cyl(0.9 * s, 1.15 * s, 5.5 * s, 0xf4efe2, x, 2.75 * s, z, 8));
+        g.add(sph(3.2 * s, i % 2 ? 0xc0392b : 0xd8823f, x, 6.1 * s, z, 11));
+      }
+    } else if (h.k === 'manor') {               // the big house the gardens belong to
+      const W2 = 46 * s, H2 = 13 * s, D2 = 15 * s;
+      g.add(box(W2, H2, D2, h.c || 0xd8cbb4, 0, H2 / 2, 0));
+      const r1 = gableRoof(W2, D2, 5.2 * s, 0x574c46, h.c || 0xd8cbb4); r1.position.y = H2; g.add(r1);
+      g.add(box(13 * s, H2 + 3.4 * s, D2 + 1.2 * s, 0xe4dac4, 0, (H2 + 3.4 * s) / 2, 0));
+      const r2 = gableRoof(13 * s, D2 + 1.2 * s, 4.2 * s, 0x574c46, 0xe4dac4); r2.position.y = H2 + 3.4 * s; g.add(r2);
+      for (let i = 0; i < 9; i++) {
+        const x = -W2 / 2 + 3.4 * s + i * (W2 - 6.8 * s) / 8;
+        for (const y of [4.2 * s, 9.4 * s]) g.add(box(1.9 * s, 2.8 * s, 0.4 * s, 0x8fb6c9, x, y, D2 / 2 + 0.12 * s));
+      }
+      g.add(box(3 * s, 5 * s, 0.5 * s, 0x6a4a33, 0, 2.5 * s, D2 / 2 + 0.3 * s));
+      for (const sx of [-W2 * 0.36, W2 * 0.36]) g.add(box(2.4 * s, 6 * s, 2.4 * s, 0x9a7360, sx, H2 + 6.5 * s, 0));
     } else if (h.k === 'gnome') {               // one titanic gnome, watching
       g.add(cyl(3.4 * s, 4.2 * s, 7 * s, 0x3b6ea5, 0, 3.5 * s, 0, 14));
       g.add(sph(3.0 * s, 0xe8b48c, 0, 8.6 * s, 0, 12));
