@@ -316,6 +316,54 @@ export function buildHood(scene, def, world, quality) {
   ring.traverse(m => { if (m.isMesh) m.castShadow = false; });
   brighten(ring, 0.22); root.add(ring);
 
+  // ---- HEROES: the one enormous thing that tells you what this place is. The Odd Sizes
+  // live or die on these — a map called The Ball of Twine needs a ball of twine on the
+  // horizon, not a treeline. Built out here so they carry no collision and no grass. ----
+  for (const h of def.hero || []) {
+    const g = new THREE.Group();
+    const s = h.s || 1;
+    if (h.k === 'ball') {                       // a colossal ball of twine, on its shelter
+      const b = sph(9 * s, h.c || 0xc9a86a, 0, 9 * s, 0, 16); g.add(b);
+      for (let i = 0; i < 14; i++) {            // wound bands, so it reads as twine
+        const r = new THREE.Mesh(new THREE.TorusGeometry(9 * s * (0.99 - Math.abs(i - 7) * 0.02), 0.30 * s, 5, 26), mat(0xb08f52));
+        r.position.y = 9 * s + (i - 7) * 1.2 * s; r.rotation.x = Math.PI / 2 + (i - 7) * 0.03; g.add(r);
+      }
+      g.add(cyl(11 * s, 11 * s, 0.7 * s, 0x9c968a, 0, 0.35 * s, 0, 18));
+      // ⚠️ NO SHELTER ROOF. It was a 28m cone at y34 — from anywhere on the lot it read as
+      // a black canopy over the entire sky, and I mistook it for a treeline twice.
+      // The ball IS the landmark; it does not need a hat.
+    } else if (h.k === 'chess') {               // pieces the size of gasholders
+      const c = h.c || 0xf2ead8;
+      g.add(cyl(3.2 * s, 4.0 * s, 2.2 * s, c, 0, 1.1 * s, 0, 14));
+      g.add(cyl(1.5 * s, 2.6 * s, 9 * s, c, 0, 6.7 * s, 0, 14));
+      g.add(cyl(3.4 * s, 2.2 * s, 1.6 * s, c, 0, 12 * s, 0, 14));
+      if (h.piece === 'king') { g.add(cyl(2.4 * s, 2.6 * s, 3 * s, c, 0, 14.3 * s, 0, 14)); g.add(box(0.8 * s, 3.4 * s, 0.8 * s, c, 0, 17 * s, 0)); g.add(box(2.6 * s, 0.8 * s, 0.8 * s, c, 0, 16.4 * s, 0)); }
+      else g.add(sph(2.6 * s, c, 0, 14 * s, 0, 12));
+    } else if (h.k === 'can') {                 // a watering can you could park in
+      g.add(cyl(5.5 * s, 6.2 * s, 9 * s, h.c || 0x4f7a52, 0, 4.5 * s, 0, 16));
+      g.add(cyl(5.6 * s, 5.0 * s, 0.8 * s, h.c || 0x4f7a52, 0, 9.2 * s, 0, 16));
+      const sp = cyl(1.0 * s, 1.8 * s, 12 * s, h.c || 0x4f7a52, -7 * s, 6.5 * s, 0, 10); sp.rotation.z = 0.9; g.add(sp);
+      g.add(cyl(2.4 * s, 2.4 * s, 0.7 * s, 0x8a8f94, -11.5 * s, 10.6 * s, 0, 12));
+      const hd = new THREE.Mesh(new THREE.TorusGeometry(3.4 * s, 0.55 * s, 6, 16, Math.PI), mat(h.c || 0x4f7a52));
+      hd.position.set(2 * s, 9.4 * s, 0); hd.rotation.y = Math.PI / 2; g.add(hd);
+    } else if (h.k === 'door') {                // the front door of something enormous
+      g.add(box(26 * s, 34 * s, 1.4 * s, h.c || 0xd8cbb4, 0, 17 * s, 0));
+      g.add(box(11 * s, 22 * s, 0.9 * s, h.door || 0x7a4a33, 0, 11 * s, 0.9 * s));
+      g.add(sph(1.1 * s, 0xd9b44a, 3.6 * s, 11 * s, 1.5 * s, 10));
+      g.add(box(28 * s, 2.2 * s, 3.4 * s, 0x8f8578, 0, 34 * s, 0.6 * s));
+    } else if (h.k === 'gnome') {               // one titanic gnome, watching
+      g.add(cyl(3.4 * s, 4.2 * s, 7 * s, 0x3b6ea5, 0, 3.5 * s, 0, 14));
+      g.add(sph(3.0 * s, 0xe8b48c, 0, 8.6 * s, 0, 12));
+      g.add(cone(3.2 * s, 6 * s, 0xc0392b, 0, 13 * s, 0, 14));
+      g.add(sph(2.2 * s, 0xf2ead8, 0, 7.2 * s, 2.2 * s, 12));
+      for (const sx of [-3.6, 3.6]) g.add(cyl(0.9 * s, 0.9 * s, 4.5 * s, 0x3b6ea5, sx * s, 4.6 * s, 0, 8));
+    }
+    g.position.set(cx + (h.x || 0), 0, cz + (h.z || 0));
+    if (h.rot) g.rotation.y = h.rot;
+    g.traverse(o => { if (o.isMesh) o.castShadow = false; });
+    brighten(g, h.lift ?? 0.26); root.add(g);
+  }
+
   // ---- the one big thing on the skyline that tells you where you are ----
   const landmark = (mk, x, z) => { mk.traverse(m => { if (m.isMesh) m.castShadow = false; }); brighten(mk, 0.24); mk.position.set(x, 0, z); root.add(mk); };
   if (P.far.includes('spire')) {
