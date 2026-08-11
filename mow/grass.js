@@ -317,6 +317,42 @@ export class GrassField {
     if (this.trackDirty) { this.trackTex.needsUpdate = true; this.trackDirty = false; }
     this.uTime.value = t;   // shared: blades, overlay, flowers and the ground all read it
   }
+  // How well did the bands come out? Circular statistics on the cut-direction channel:
+  //   neatness    — mean resultant length R per zone (1 = every pass in that band went the
+  //                 same way, 0 = you wandered). Plain averaging of angles is wrong here,
+  //                 because 359° and 1° average to 180°; the vector sum handles the wrap.
+  //   alternation — the share of neighbouring bands whose mean directions oppose, which is
+  //                 what actually makes stripes catch the light.
+  // Celebratory only. Nothing here can fail a job or hold up completion.
+  patternStats(nZones) {
+    const sc = new Float64Array(nZones), ss = new Float64Array(nZones), cnt = new Uint32Array(nZones);
+    const n = this.tw * this.th;
+    for (let i = 0; i < n; i++) {
+      const b = i * 4;
+      if (this.mask[b] !== CUT) continue;
+      const zi = this.zone[i]; if (zi >= nZones) continue;
+      const a = this.mask[b + 1] / 255 * 6.283185307;
+      sc[zi] += Math.cos(a); ss[zi] += Math.sin(a); cnt[zi]++;
+    }
+    const mean = [], R = [];
+    for (let z = 0; z < nZones; z++) {
+      if (!cnt[z]) { mean.push(null); R.push(0); continue; }
+      mean.push(Math.atan2(ss[z], sc[z]));
+      R.push(Math.hypot(sc[z], ss[z]) / cnt[z]);
+    }
+    const live = R.filter((_, i) => cnt[i]);
+    const neatness = live.length ? live.reduce((a, b) => a + b, 0) / live.length : 0;
+    let pairs = 0, opposed = 0;
+    for (let z = 1; z < nZones; z++) {
+      if (mean[z] === null || mean[z - 1] === null) continue;
+      pairs++;
+      let d = Math.abs(mean[z] - mean[z - 1]);
+      if (d > Math.PI) d = 2 * Math.PI - d;
+      if (d > Math.PI / 2) opposed++;
+    }
+    const alternation = pairs ? opposed / pairs : 0;
+    return { neatness, alternation, score: Math.round(100 * (0.65 * neatness + 0.35 * alternation)) };
+  }
   setMow(x, z, s) { if (this.bladeMat) this.bladeMat.uniforms.uMow.value.set(x, z, s); }
   setSun(warm) { this.uWarm.value = warm; }
   dispose() { this.group.removeFromParent(); if (this.overlay) this.overlay.removeFromParent(); }

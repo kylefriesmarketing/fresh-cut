@@ -374,10 +374,23 @@ export class Game {
     this.warmTarget = 1;
     sfx.ambStart('night');
     this._clearLB();
+    // pattern maps get told how the bands came out — praise only, never a gate
+    let pattern = null;
+    if (this.def.pattern) {
+      pattern = this.grass.patternStats(this.zoneDone.length);
+      const s = pattern.score;
+      const line = s >= 88 ? 'Championship stripes. Somebody is going to photograph that.'
+        : s >= 72 ? 'Proper bands. That reads from the road.'
+          : s >= 55 ? 'Stripes, if the light is kind.'
+            : 'Cut clean. The pattern will keep for next time.';
+      this.cb.hint?.(`Pattern ${s}/100 — ${line}`, 7600);
+    }
+    this.patternStats = pattern;
     this.cb.complete?.({
       time: this.time, dist: this.dist,
       found: this.found.length, totalDisc: this.disc.length,
       keeps: this.disc.filter(d => d.tier === 'keep' && d.state === 2).length,
+      pattern,
     });
   }
 

@@ -48,7 +48,7 @@ export const TOUR = [
     id: 'speedway', block: 5, tour: true, name: 'Hazel Park Speedway', client: 'Speedway Association', who: 'DUTCH',
     blurb: "A quarter-mile dirt oval with a grass infield and banking they cut into the hillside in 1962. You are mowing the banking. Yes, on the slope. Dutch says the mower has done it before and the mower has never complained.",
     pop: 'watch the banking',
-    lot: { w: 34, h: 24 }, seed: 602, fence: 'chain', gate: { x: 16.5, w: 2.0 }, hood: 'openfield',
+    pattern: true, lot: { w: 34, h: 24 }, seed: 602, fence: 'chain', gate: { x: 16.5, w: 2.0 }, hood: 'openfield',
     terrain: { features: [
       { k: 'ridge', x1: 4, z1: 4, x2: 30, z2: 4, w: 5.0, h: 1.9 },
       { k: 'ridge', x1: 4, z1: 20, x2: 30, z2: 20, w: 5.0, h: 1.9 },
@@ -200,6 +200,7 @@ export const TOUR = [
     pop: 'it goes on the news',
     lot: { w: 38, h: 26 }, seed: 606, fence: 'chain', gate: { x: 19, w: 2.2 }, hood: 'openfield',
     terrain: { features: [{ k: 'mound', x: 19, z: 13, r: 20, h: 0.75 }] },   // the outfield crown, for drainage
+    pattern: true,
     tiers: [{ t: 'base', tier: 2 }],
     // the infield: home plate, the base paths and the warning track behind the bleachers
     paths: [
