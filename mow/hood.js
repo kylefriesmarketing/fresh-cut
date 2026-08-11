@@ -174,18 +174,36 @@ export function buildHood(scene, def, world, quality) {
   // ---- indoors: four walls and a ceiling, and nothing else. A sunken lounge does not
   // have a horizon, and leaving one there was what made the shag carpet read as a field. ----
   if (P.indoor) {
-    const wh = P.wallH || 9, m = 3.5;
+    // per-map room dressing: def.room overrides the archetype, so the shag lounge is
+    // 1974 brown, the snooker room is club green and the kitchen windowsill is tiled
+    const R = def.room || {};
+    const wallC = R.wall ?? P.wallC, ceilC = R.ceil ?? P.ceilC, skirtC = R.skirt ?? P.skirtC;
+    const wh = R.h || P.wallH || 9, m = 3.5;
     const room = new THREE.Group();
-    room.add(box(W + m * 2, wh, 0.7, P.wallC, cx, wh / 2, -m));
-    room.add(box(W + m * 2, wh, 0.7, P.wallC, cx, wh / 2, H + m));
-    room.add(box(0.7, wh, H + m * 2, P.wallC, -m, wh / 2, cz));
-    room.add(box(0.7, wh, H + m * 2, P.wallC, W + m, wh / 2, cz));
-    for (const [bx, bz, bw, bd] of [[cx, -m + 0.4, W + m * 2, 0.3], [cx, H + m - 0.4, W + m * 2, 0.3]])
-      room.add(box(bw, 0.5, bd, P.skirtC, bx, 0.25, bz));
-    const ceil = new THREE.Mesh(new THREE.PlaneGeometry(W + m * 2, H + m * 2), mat(P.ceilC));
+    for (const [bx, bz, bw, bd] of [[cx, -m, W + m * 2, 0.7], [cx, H + m, W + m * 2, 0.7]]) room.add(box(bw, wh, bd, wallC, bx, wh / 2, bz));
+    room.add(box(0.7, wh, H + m * 2, wallC, -m, wh / 2, cz));
+    room.add(box(0.7, wh, H + m * 2, wallC, W + m, wh / 2, cz));
+    // a dado rail and skirting, so the walls are a ROOM and not a beige box
+    for (const [bx, bz, bw, bd] of [[cx, -m + 0.4, W + m * 2, 0.34], [cx, H + m - 0.4, W + m * 2, 0.34]]) {
+      room.add(box(bw, 0.55, bd, skirtC, bx, 0.27, bz));
+      room.add(box(bw, 0.22, bd * 0.8, skirtC, bx, wh * 0.42, bz));
+    }
+    for (const sx of [-m + 0.4, W + m - 0.4]) {
+      room.add(box(0.34, 0.55, H + m * 2, skirtC, sx, 0.27, cz));
+      room.add(box(0.27, 0.22, H + m * 2, skirtC, sx, wh * 0.42, cz));
+    }
+    // and something on the far wall to look at
+    if (R.window !== false) {
+      const wy = wh * 0.68, ww = Math.min(9, W * 0.4);
+      room.add(box(ww, 3.0, 0.24, R.glass ?? 0xbcd8e4, cx, wy, -m + 0.4));
+      room.add(box(ww + 0.7, 0.34, 0.34, skirtC, cx, wy + 1.65, -m + 0.35));
+      room.add(box(ww + 0.7, 0.34, 0.34, skirtC, cx, wy - 1.65, -m + 0.35));
+      room.add(box(0.3, 3.0, 0.3, skirtC, cx, wy, -m + 0.32));
+    }
+    const ceil = new THREE.Mesh(new THREE.PlaneGeometry(W + m * 2, H + m * 2), mat(ceilC));
     ceil.rotation.x = Math.PI / 2; ceil.position.set(cx, wh, cz); room.add(ceil);
     room.traverse(o => { if (o.isMesh) o.castShadow = false; });
-    brighten(room, 0.34); root.add(room);
+    brighten(room, R.lift ?? 0.34); root.add(room);
     return { group: root, hood: P };     // no ring, no landmarks, no sky business
   }
 

@@ -99,7 +99,7 @@ export class Game {
 
     // golden hour state
     this.warm = 0; this.warmTarget = 0;
-    applyLightPreset(this.world, this.scene, def.light || 'day', 0);
+    applyLightPreset(this.world, this.scene, def.light || 'day', 0, def.palette);
 
     this.blockHintT = 0; this.bumpT = 0;
   }
@@ -266,7 +266,7 @@ export class Game {
     // golden hour lerp
     if (this.warm !== this.warmTarget) {
       this.warm += Math.sign(this.warmTarget - this.warm) * Math.min(Math.abs(this.warmTarget - this.warm), dt * 0.14);
-      applyLightPreset(this.world, this.scene, this.def.light || 'day', this.warm);
+      applyLightPreset(this.world, this.scene, this.def.light || 'day', this.warm, this.def.palette);
       this.grass.setSun(this.warm);
     }
     // clouds drift like a long afternoon
@@ -329,7 +329,7 @@ export class Game {
     this.lbT += dt;
     for (const s of this.lbSprites) { const k = 0.8 + Math.sin(this.lbT * 3 + s.userData.ph) * 0.25; s.scale.set(k, k, 1); }
   }
-  applyWarmNow() { this.warm = this.warmTarget; applyLightPreset(this.world, this.scene, this.def.light || 'day', this.warm); this.grass.setSun(this.warm); }
+  applyWarmNow() { this.warm = this.warmTarget; applyLightPreset(this.world, this.scene, this.def.light || 'day', this.warm, this.def.palette); this.grass.setSun(this.warm); }
   camPos() {
     const p = this.p, bobA = this.gear.bob;
     const bob = Math.sin(this.time * 10.5) * 0.028 * this.speedF * bobA;
@@ -435,7 +435,7 @@ export class Game {
 }
 
 // ---------------- lighting presets + golden hour ----------------
-function applyLightPreset(world, scene, kind, warm) {
+function applyLightPreset(world, scene, kind, warm, pal) {
   const lerpC = (a, b, t) => new THREE.Color(a).lerp(new THREE.Color(b), t);
   // porch-light physics: windows warm up as the day goes gold (always lit at night)
   if (world.windows && world.windows.length) {
@@ -476,6 +476,19 @@ function applyLightPreset(world, scene, kind, warm) {
     scene.fog.color.set(lerpC(0xcfe3e0, 0xf0c894, warm));
     const W = world.sun.target.position.x * 2, H = world.sun.target.position.z * 2;
     world.sun.position.set(W / 2 + 14, 22 - warm * 12, H / 2 - 10 + warm * 16);
+  }
+  // A map may overrule the whole palette. The Odd Sizes use this to stop looking like a
+  // quiet Saturday — a sherbet sky over the giant lawn, a sick green over the shag carpet.
+  // Applied LAST so it wins over the preset and the golden-hour lerp alike.
+  if (pal) {
+    if (pal.sky !== undefined) world.sky.material.color.set(pal.sky);
+    if (pal.fog !== undefined) scene.fog.color.set(pal.fog);
+    if (pal.hemi !== undefined) world.hemi.color.set(pal.hemi);
+    if (pal.ground !== undefined) world.hemi.groundColor.set(pal.ground);
+    if (pal.sun !== undefined) world.sun.color.set(pal.sun);
+    if (pal.hemiI !== undefined) world.hemi.intensity = pal.hemiI;
+    if (pal.sunI !== undefined) world.sun.intensity = pal.sunI;
+    if (pal.fogNear !== undefined) { scene.fog.near = pal.fogNear; scene.fog.far = pal.fogFar; }
   }
 }
 

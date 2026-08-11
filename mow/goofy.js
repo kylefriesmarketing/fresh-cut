@@ -14,6 +14,7 @@ export const GOOFY = [
     blurb: "An ordinary front lawn. The Petersons are very clear about this. It is an ordinary front lawn and they would appreciate it if you did not make a thing of it. The daisies are four metres tall. It is an ordinary front lawn.",
     pop: 'ordinary, they insist',
     lot: { w: 36, h: 26 }, seed: 701, fence: 'picket', gate: { x: 17, w: 2.4 }, hood: 'giant',
+    palette: { sky: 0xffd6ec, fog: 0xffc9e2, hemi: 0xffe0f0, sun: 0xfff3d0, hemiI: 1.05, fogNear: 40, fogFar: 190 },
     terrain: { features: [{ k: 'mound', x: 18, z: 13, r: 15, h: 1.1 }] },
     tiers: [{ t: 'base', tier: 3 }, { t: 'rect', x: 10, z: 9, w: 16, h: 9, tier: 4 }],
     props: [
@@ -40,6 +41,8 @@ export const GOOFY = [
     blurb: "Mr Brill installed avocado shag throughout the sunken lounge in 1974 and it has not been cut since. The executor is selling the house. The estate agent used the word 'meadow.' The estate agent was not being poetic.",
     pop: "the agent said 'meadow'",
     lot: { w: 24, h: 18 }, seed: 702, light: 'weird', fence: 'none', gate: { x: 2, w: 2.0 }, hood: 'indoor',
+    room: { wall: 0x8a5a2f, ceil: 0xe8dfc4, skirt: 0x5f3d1e, glass: 0xd8a23f, h: 7 },
+    palette: { sky: 0x8a5a2f, fog: 0x6b4a2a, hemi: 0xd8a45c, ground: 0x4a7a3a, sun: 0xffd79a, hemiI: 1.0, sunI: 1.1, fogNear: 26, fogFar: 90 },
     terrain: { features: [{ k: 'bowl', x: 12, z: 9, r: 8, h: 1.2 }] },
     tiers: [{ t: 'base', tier: 4 }, { t: 'rect', x: 8, z: 6, w: 8, h: 6, tier: 3 }],
     props: [
@@ -65,6 +68,8 @@ export const GOOFY = [
     blurb: "Forty years of work: a whole town in miniature, laid out on trestles, with real grass because Gordon insists real grass is the only thing that reads as grass. It is now nine inches tall. The village of Little Comberton is somewhere under there.",
     pop: 'Little Comberton is under there',
     lot: { w: 20, h: 14 }, seed: 703, fence: 'rail', gate: { x: 9.5, w: 1.4 }, hood: 'indoor',
+    room: { wall: 0x9db9a4, ceil: 0xf0ead6, skirt: 0x4a5f50, glass: 0xcfe4ee, h: 8 },
+    palette: { sky: 0x9db9a4, fog: 0x9db9a4, hemi: 0xe0eee4, hemiI: 1.05, fogNear: 34, fogFar: 120 },
     terrain: { features: [{ k: 'mound', x: 6, z: 7, r: 4.5, h: 0.9 }, { k: 'ridge', x1: 0, z1: 10, x2: 20, z2: 10, w: 1.6, h: 0.5 }] },
     tiers: [{ t: 'base', tier: 3 }],
     props: [
@@ -91,6 +96,7 @@ export const GOOFY = [
     blurb: "A lawn the size of a tea tray, forty-one years old, kept in scale with a maple that is itself only slightly larger than a mug. It has been left three weeks. In bonsai terms Mrs Kuroda describes this as 'a catastrophe, but a recoverable one.'",
     pop: 'a recoverable catastrophe',
     lot: { w: 16, h: 12 }, seed: 704, fence: 'picket', gate: { x: 7.5, w: 1.2 }, hood: 'parkland',
+    palette: { sky: 0xe8c8d8, fog: 0xdcc0cf, hemi: 0xffe4ee, sun: 0xfff0d8, hemiI: 1.0, fogNear: 30, fogFar: 130 },
     terrain: { features: [{ k: 'mound', x: 8, z: 6, r: 6, h: 0.7 }, { k: 'bowl', x: 12.5, z: 8.5, r: 2.6, h: 0.4 }] },
     tiers: [{ t: 'base', tier: 3 }, { t: 'circle', x: 8, z: 6, r: 3.4, tier: 2 }],
     props: [
@@ -116,6 +122,7 @@ export const GOOFY = [
     blurb: "Arthur laid out a chessboard in the walled garden in 1979, sixty-four squares, mown alternately. He did it every fortnight for thirty years and never once explained why. The squares are still there, faintly, if you know where to stand.",
     pop: 'sixty-four squares',
     lot: { w: 32, h: 24 }, seed: 705, fence: 'rail', gate: { x: 15.5, w: 1.6 }, hood: 'parkland',
+    palette: { sky: 0xd9e4ef, fog: 0xc9d6e4, hemi: 0xeef2f8, sun: 0xfffaf0, hemiI: 0.95, fogNear: 44, fogFar: 180 },
     terrain: { features: [{ k: 'mound', x: 16, z: 12, r: 16, h: 0.5 }] },
     tiers: [{ t: 'base', tier: 2 }],
     props: [
@@ -143,6 +150,8 @@ export const GOOFY = [
     blurb: "The club's championship table was left under a leaking skylight for a winter. Something took. Barry describes what is now growing on the felt as 'a difficult green' and has asked you not to say anything to the league.",
     pop: "don't tell the league",
     lot: { w: 26, h: 14 }, seed: 706, fence: 'rail', gate: { x: 12.5, w: 1.4 }, hood: 'indoor',
+    room: { wall: 0x2f5b3f, ceil: 0xd9cfae, skirt: 0x7a5a2f, glass: 0xf0e0a8, h: 6.5 },
+    palette: { sky: 0x2f5b3f, fog: 0x24462f, hemi: 0x7fc79a, ground: 0x2a4a35, sun: 0xffe9b0, hemiI: 0.95, sunI: 1.15, fogNear: 22, fogFar: 80 },
     terrain: { features: [{ k: 'slope', ang: 1.571, h: 0.5 }, { k: 'bowl', x: 13, z: 7, r: 9, h: 0.35 }] },
     tiers: [{ t: 'base', tier: 3 }],
     props: [
@@ -169,6 +178,7 @@ export const GOOFY = [
     blurb: "There is a house at the end of the lane with a doormat forty metres across. Nobody has ever seen who lives there. The mat has gone to seed. An envelope of cash arrives every spring and the note says the same three words it has said for eleven years: PLEASE AND THANK YOU.",
     pop: 'please and thank you',
     lot: { w: 40, h: 20 }, seed: 707, light: 'dusk', fence: 'none', gate: { x: 19, w: 3 }, hood: 'giant',
+    palette: { sky: 0x6a5a8a, fog: 0x54476e, hemi: 0xb0a0d0, sun: 0xffc98a, hemiI: 0.9, fogNear: 34, fogFar: 150 },
     terrain: { features: [{ k: 'ridge', x1: 0, z1: 3, x2: 40, z2: 3, w: 3, h: 0.8 }, { k: 'ridge', x1: 0, z1: 17, x2: 40, z2: 17, w: 3, h: 0.8 }, { k: 'mound', x: 20, z: 10, r: 18, h: 0.5 }] },
     tiers: [{ t: 'base', tier: 4 }, { t: 'rect', x: 6, z: 6, w: 28, h: 8, tier: 3 }],
     props: [
@@ -194,6 +204,7 @@ export const GOOFY = [
     blurb: "Four hundred and eleven garden gnomes, arranged in rows on a show field, at every size from thumbnail to shed. Judging is Saturday. The grass between them has not been touched since the rows were laid out and Patricia is being very brave about it.",
     pop: 'judging is Saturday',
     lot: { w: 30, h: 22 }, seed: 708, fence: 'picket', gate: { x: 14.5, w: 1.4 }, hood: 'parkland',
+    palette: { sky: 0xcfe8b0, fog: 0xbfdd9e, hemi: 0xe8f5cf, sun: 0xfff6c8, hemiI: 1.1, fogNear: 40, fogFar: 170 },
     terrain: { features: [{ k: 'step', x1: 0, z1: 11, x2: 30, z2: 11, w: 2.4, h: 0.9 }] },
     tiers: [{ t: 'base', tier: 3 }],
     props: [
@@ -221,6 +232,8 @@ export const GOOFY = [
     blurb: "Theo grows wheatgrass in a tray on his kitchen windowsill. The tray is ninety centimetres long. Theo has booked a full lawn service. Theo is entirely serious and has already paid, and when you arrive the ladder is out and the window is open.",
     pop: 'he has already paid',
     lot: { w: 18, h: 10 }, seed: 709, fence: 'rail', gate: { x: 8.5, w: 1.2 }, hood: 'indoor',
+    room: { wall: 0xdce8ee, ceil: 0xf4f7f8, skirt: 0x9db4bf, glass: 0xcfe8f2, h: 6 },
+    palette: { sky: 0xdce8ee, fog: 0xcfe0e8, hemi: 0xf0f7fa, hemiI: 1.1, fogNear: 24, fogFar: 90 },
     terrain: { features: [{ k: 'ridge', x1: 0, z1: 1.6, x2: 18, z2: 1.6, w: 1.8, h: 0.7 }, { k: 'ridge', x1: 0, z1: 8.4, x2: 18, z2: 8.4, w: 1.8, h: 0.7 }] },
     tiers: [{ t: 'base', tier: 4 }],
     props: [
@@ -245,6 +258,7 @@ export const GOOFY = [
     blurb: "The world's second-largest ball of twine sits in a field off Route 9 under a shelter, and the field around it is municipal responsibility, which is to say it is Ray's, which is to say it is now yours. The ball is nine metres across. The grass around it goes uphill in every direction, because the ball made a hill.",
     pop: 'second-largest, and honest about it',
     lot: { w: 34, h: 26 }, seed: 710, fence: 'chain', gate: { x: 16.5, w: 2.2 }, hood: 'openfield',
+    palette: { sky: 0xf2c98a, fog: 0xe6b877, hemi: 0xffe8c0, sun: 0xffdca0, hemiI: 1.05, fogNear: 44, fogFar: 190 },
     terrain: { features: [{ k: 'mound', x: 17, z: 13, r: 12, h: 2.6 }, { k: 'ridge', x1: 0, z1: 24, x2: 34, z2: 24, w: 3, h: 0.7 }] },
     tiers: [{ t: 'base', tier: 3 }, { t: 'circle', x: 17, z: 13, r: 5, tier: 2 }],
     props: [
