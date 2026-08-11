@@ -13,6 +13,53 @@ Deploy = copy the whole folder to any static host (GitHub Pages works as-is).
 **F** high-cut lever (jungle grass needs it first) · hold **LMB** to trim ·
 **R** Pop's radio · **Z** zone list · **L** last-blade glow · **Esc** pause.
 
+## v1.14 – v1.19 (2026-08-11) — backdrops, a fourth book, and pattern scoring
+
+**v1.14 — backdrops match the location.** Five non-residential hood archetypes
+(`parkland`, `openfield`, `water`, `city`, `orchardland`) with `residential: false`, which
+skips hood.js's side and rear neighbours. ⚠️ **The catch:** the houses out front come from
+**street.js**, not hood.js — it builds a road, five houses, traffic, parked cars and
+pedestrians for every map. Gating hood.js alone left a suburban street with a passing
+pickup in front of the reservoir. street.js now carries its own `NON_RESIDENTIAL` list,
+and props.js skips the road/pavement planes via the same literal list (kept literal rather
+than importing hood.js, which would make props ↔ hood circular).
+
+**v1.15 — map identity.** `def.paths` gained `c` (a colour); that one field bought the
+speedway's dirt oval and Cutter Field's base paths. New props `parapet` (a roof reads as a
+lawn without one) and `backstop`. ⚠️ Reservoir water raised to y −0.012 — **above** the
+surround aprons at −0.03, which were showing *through* it as a green band.
+
+**v1.16 — pattern scoring.** `grass.patternStats(nZones)` runs circular statistics over the
+cut-direction channel: `neatness` = mean resultant length per zone (⚠️ **plain averaging of
+angles is wrong** — 359° and 1° average to 180°; the vector sum handles the wrap),
+`alternation` = share of neighbouring bands whose mean directions oppose. Score = 65%
+neatness + 35% alternation. **Praise only — it cannot fail or gate a job** (invariant 1).
+Measured: alternating bands **96**, one-directional **65** (neat but not striped — the
+honest reading), wandering **22**. Maps opt in with `pattern: true`.
+
+**v1.17 — the score on the postcard.** A circular stamp drawn in `drawPostcard` (module
+`pcPattern`, set in `renderComplete`) so it survives into the saved PNG, plus a caption
+tail. ⚠️ **Speedway dirt oval fixed:** it was at z 1.5/19.1 — the *outer* face of the
+banking, which from a camera down in the infield sits beyond the crest and is invisible
+however wide you make it. Moved to the inner face, which is also what a real banked oval
+looks like from the middle.
+
+**v1.18 — THE ODD SIZES (`mow/goofy.js`, block 6).** A fourth book: ten absurd-scale maps
+in the game's own deadpan voice — nobody in it knows they are being funny. ⚠️ Absurd scale
+was nearly free because the prop loop already honours `s`: a gnome at `s: 9` is three
+storeys, a tree at `o.s: 0.16` is a model-railway shrub. New gear locked per map: **the
+Titan** (swath 2.2, slow), **the Hover** (0.95, no bob), **the Tweezers** (0.20).
+
+**v1.19 — Odd Sizes backdrops.** `indoor` (four walls, ceiling, skirting; returns early so
+there is no ring, no landmark and no sky — a sunken lounge has no horizon) and `giant`
+(houses 30–52 m wide, `ringTreeScale` 9). ⚠️ The indoor rooms are still plain flat walls:
+they read as indoors but want a window or picture rail to be good.
+
+⚠️ **ui.js filters three book flags out of the campaign count** (`!j.odd && !j.tour &&
+!j.goofy`). Any future book must be added there or the "pages inked" counter inflates.
+
+**44 jobs across four books. All complete, 0 console errors.**
+
 ## v1.13 (2026-08-11) — THE WIDER JOB BOOK: ten new maps
 
 A second campaign (`mow/tour.js`, block 5, `tour: true`), unlocked from the start. Ten
