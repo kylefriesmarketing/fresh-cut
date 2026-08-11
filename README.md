@@ -13,6 +13,35 @@ Deploy = copy the whole folder to any static host (GitHub Pages works as-is).
 **F** high-cut lever (jungle grass needs it first) · hold **LMB** to trim ·
 **R** Pop's radio · **Z** zone list · **L** last-blade glow · **Esc** pause.
 
+## v1.10 (2026-08-11) — the invisible walls around the house
+
+"There are invisible walls around the houses so you can't get right up to the edges."
+
+The house was approximated by a **row of circles** whose radius was its half-**depth**
+(`r = HD/2 + 0.25`). A circle bulges in every direction, so those circles stuck out past
+the ends of the building by roughly that radius minus their spacing — nearly two metres of
+unmowable ground off each end. Measured by driving at the house from 16 directions and
+recording how close the deck lip got:
+
+```
+old circles: 0.10 … 1.95 m   (the 1.45/1.95 readings are exactly at the house ENDS)
+new rects:   0.08 … 0.16 m   uniform all the way round     improvement: 1.79 m
+```
+
+- `world.rects` is a new collider type resolved against the closest point on the
+  rectangle, so a building collides as its actual footprint with 8 cm of margin. The
+  trimmer now reaches the wall (gap 0) from all 16 directions.
+- ⚠️ **The porch stays a CIRCLE on purpose.** As a rect it butted against the house rect,
+  and two touching rects resolved in sequence shove the body back and forth between them —
+  it settled *inside*. Measured 60 stuck cases. One rect plus one circle cannot do that:
+  re-measured at **0 ticks inside a wall** across 17 houses × 24 approach angles × 200
+  ticks.
+- ⚠️ Escape-if-inside is decided **once, from the body**, never per probe: the body and
+  the mower nose sit at different depths, so each picking its own nearest wall made them
+  push opposite ways.
+- The remaining ~0.9 m gap on the front arc is the porch itself, which really is there.
+  Worst gap anywhere else: 0.28 m. 24/24 jobs, 0 console errors.
+
 ## v1.9 (2026-08-11) — the art pass: light, weather and small living things
 
 - **`mow/post.js`** — a finishing pass: bloom on genuinely bright things, a colour grade

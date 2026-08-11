@@ -287,7 +287,7 @@ export function makeTrimmer() {
 
 // ---------------- yard builder ----------------
 export function buildYard(scene, def, grass, quality) {
-  const world = { colliders: [], group: new THREE.Group(), sway: [], swayRoots: [] };
+  const world = { colliders: [], rects: [], group: new THREE.Group(), sway: [], swayRoots: [] };
   scene.add(world.group);
   const W = def.lot.w, H = def.lot.h;
 
@@ -372,8 +372,13 @@ export function buildYard(scene, def, grass, quality) {
     hg.traverse(m => { if (m.isMesh) { m.castShadow = true; } });
     world.group.add(hg); world.house = hg;
     grass.noGrassRect(hd.x - HW / 2 - 0.3, hd.z - HD / 2 - 2.0, HW + 0.6, HD + 2.4);
-    for (let cx2 = -HW / 2 + 0.5; cx2 <= HW / 2 - 0.5 + 0.01; cx2 += 1) world.colliders.push({ x: hd.x + cx2, z: hd.z, r: HD / 2 + 0.25 });
-    world.colliders.push({ x: hd.x, z: hd.z - HD / 2 - 0.85, r: 0.9 }); // porch
+    // the walls themselves, with only a hair of margin, so you can mow the full way in
+    world.rects.push({ x0: hd.x - HW / 2 - 0.08, x1: hd.x + HW / 2 + 0.08, z0: hd.z - HD / 2 - 0.08, z1: hd.z + HD / 2 + 0.08 });
+    // The porch stays a CIRCLE. As a rect it butted against the house rect, and two
+    // touching rects resolved in sequence shove a body back and forth between them —
+    // it settled inside. One rect (the house) plus one circle can't do that, and the
+    // porch is round-ish, small, and sits on no-grass anyway.
+    world.colliders.push({ x: hd.x, z: hd.z - HD / 2 - 0.85, r: 0.9 });
   }
 
   // --- fence ---

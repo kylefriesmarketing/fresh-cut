@@ -131,6 +131,30 @@ export class Game {
           }
         }
       }
+      // Rectangular things (the house, its porch) collide as rectangles. Approximating a
+      // building with a row of circles gives every circle's radius in EVERY direction, so
+      // the ends bulged metres past the walls — an invisible wall you couldn't mow up to.
+      for (const r of this.world.rects || []) {
+        for (const [px, pz, pr] of [[nx, nz, R], [nx + Math.sin(p.yaw) * noseD, nz + Math.cos(p.yaw) * noseD, mowing ? this.gear.swath * 0.5 : 0.2]]) {
+          const qx = Math.max(r.x0, Math.min(r.x1, px)), qz = Math.max(r.z0, Math.min(r.z1, pz));
+          const ddx = px - qx, ddz = pz - qz, d = Math.hypot(ddx, ddz);
+          if (d > 0.0001 && d < pr) {
+            const push = pr - d;
+            nx += (ddx / d) * push; nz += (ddz / d) * push;
+            if (this.bumpT <= 0 && moving) { this.bumpT = 0.8; sfx.thunk(); }
+          }
+        }
+        // Escape is decided ONCE, from the body, and never per-probe: the body and the
+        // mower nose sit at different depths, so each picking its own nearest wall made
+        // them shove opposite ways and settle at an equilibrium INSIDE the porch.
+        if (nx > r.x0 && nx < r.x1 && nz > r.z0 && nz < r.z1) {
+          const dl = nx - r.x0, dr2 = r.x1 - nx, db = nz - r.z0, dt = r.z1 - nz;
+          const m = Math.min(dl, dr2, db, dt);
+          if (m === dl) nx = r.x0 - R; else if (m === dr2) nx = r.x1 + R;
+          else if (m === db) nz = r.z0 - R; else nz = r.z1 + R;
+          if (this.bumpT <= 0 && moving) { this.bumpT = 0.8; sfx.thunk(); }
+        }
+      }
     }
     this.dist += Math.hypot(nx - p.x, nz - p.z);
     p.x = nx; p.z = nz;
