@@ -180,7 +180,21 @@ export function buildHood(scene, def, world, quality) {
     const wallC = R.wall ?? P.wallC, ceilC = R.ceil ?? P.ceilC, skirtC = R.skirt ?? P.skirtC;
     const wh = R.h || P.wallH || 9, m = 3.5;
     const room = new THREE.Group();
-    for (const [bx, bz, bw, bd] of [[cx, -m, W + m * 2, 0.7], [cx, H + m, W + m * 2, 0.7]]) room.add(box(bw, wh, bd, wallC, bx, wh / 2, bz));
+    const total = W + m * 2, winW = Math.min(9, W * 0.4), winY = wh * 0.68, winH = 3.0;
+    // The north wall is built AROUND the window instead of straight through it, so an
+    // indoor map can put a hero outside and you actually see it. A room with a painted-on
+    // window is still a box; a room you can see out of is a place.
+    if (R.window === false) {
+      room.add(box(total, wh, 0.7, wallC, cx, wh / 2, -m));
+    } else {
+      const side = (total - winW) / 2;
+      room.add(box(side, wh, 0.7, wallC, cx - winW / 2 - side / 2, wh / 2, -m));
+      room.add(box(side, wh, 0.7, wallC, cx + winW / 2 + side / 2, wh / 2, -m));
+      const above = wh - (winY + winH / 2);
+      room.add(box(winW, above, 0.7, wallC, cx, winY + winH / 2 + above / 2, -m));
+      room.add(box(winW, winY - winH / 2, 0.7, wallC, cx, (winY - winH / 2) / 2, -m));
+    }
+    room.add(box(total, wh, 0.7, wallC, cx, wh / 2, H + m));
     room.add(box(0.7, wh, H + m * 2, wallC, -m, wh / 2, cz));
     room.add(box(0.7, wh, H + m * 2, wallC, W + m, wh / 2, cz));
     // a dado rail and skirting, so the walls are a ROOM and not a beige box
@@ -195,7 +209,7 @@ export function buildHood(scene, def, world, quality) {
     // and something on the far wall to look at
     if (R.window !== false) {
       const wy = wh * 0.68, ww = Math.min(9, W * 0.4);
-      room.add(box(ww, 3.0, 0.24, R.glass ?? 0xbcd8e4, cx, wy, -m + 0.4));
+      // frame and mullion only — no glass pane, or it would block the view we just opened
       room.add(box(ww + 0.7, 0.34, 0.34, skirtC, cx, wy + 1.65, -m + 0.35));
       room.add(box(ww + 0.7, 0.34, 0.34, skirtC, cx, wy - 1.65, -m + 0.35));
       room.add(box(0.3, 3.0, 0.3, skirtC, cx, wy, -m + 0.32));
