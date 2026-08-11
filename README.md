@@ -13,26 +13,97 @@ Deploy = copy the whole folder to any static host (GitHub Pages works as-is).
 **F** high-cut lever (jungle grass needs it first) · hold **LMB** to trim ·
 **R** Pop's radio · **Z** zone list · **L** last-blade glow · **Esc** pause.
 
-## ⏭️ NEXT SESSION — Kyle's standing brief (given 2026-08-11, NOT started)
+## ⏭️ NEXT SESSION — what's open
 
-The Odd Sizes are now the visual benchmark. Kyle asked for two things next, and expects a
-long continuous push:
+The standing brief of 2026-08-11 (campaign heroes + palettes, and the mower pass) is
+**DONE — see v1.28 below.** Every one of the 44 jobs now carries a `hero` and a `palette`.
+What's left, in the order I'd take it:
 
-1. **Bring the ORIGINAL campaign maps up to the same standard** — the 19 main-book pages
-   and the 4 Odd Jobs. They still have the v1.11 treatment: a hood archetype and nothing
-   else. What the Odd Sizes have that they don't:
-   - `def.hero` set-pieces (hood.js kinds: `ball` `chess` `can` `door` `gnome` `pagoda`
-     `village` `manor` — each is ~15 lines, and this is by far the best wow-per-effort
-     lever available)
-   - `def.palette` (sky/fog/hemi/ground/sun/hemiI/sunI/fogNear/fogFar) so each map has its
-     own light instead of the stock blue
-   - ⚠️ Keep the QUIET tone for these — they are Pop's route, not the goofy book. Palettes
-     should be gentle time-of-day/weather shifts, and heroes should be things a real town
-     has: a grain elevator, a church spire, a mill chimney, a water tower, a hospital block.
-2. **A visual pass on the MOWERS themselves** (`makeMower` in props.js). All seven are
-   boxes with cylinder wheels and no detail: no grass chute, no engine pull-cord, no cable,
-   no levers, no branding, no wear. The player looks at this object for the entire game.
-   Earned paint (`save.paint`) already drives the deck colour on push/self/wide/rider.
+1. **The indoor rooms are still plain walls** (`hood.indoor`, v1.19's note). They now have a
+   real window with a set-piece beyond it, but the walls themselves want a picture rail, a
+   light fitting, a skirting shadow — something that says *room* rather than *box*.
+2. **Sound for the new machines.** `ENGINE_VOICE` in sfx.js still has one voice per gear
+   from before they were differentiated: the Hover should whine and not putter, the Titan
+   should be a much bigger engine, and the Tweezers should barely be audible.
+3. **Notebook stats page** (from the original backlog — lifetime m², total time, finds,
+   per-job bests; the data is already in `fc-save`).
+4. A trailer/screenshot pass would be cheap now: `__fc.shoot(name, port)` photographs the
+   game from inside it (see below), and the heroes finally give every map a skyline worth
+   pointing a camera at.
+
+## v1.28 (2026-08-11) — the town has a skyline, and seven machines instead of one
+
+**1. Every job in the original campaign has a `hero` and a `palette`** — the 19 notebook
+pages, the 4 Odd Jobs, the 10 Wider Job Book maps (they had the same gap; README v1.13
+flagged it) and the Daily Lawn, which rolls one of each from its seed.
+
+Nine new hero kinds in hood.js, deliberately **quiet**: `tower` (the water tower),
+`church` (nave, belfry, clock, spire), `elevator` (grain elevator + headhouse + conveyor
+gallery), `mill` (brick mill and the chimney you steer by), `hospital`, `civic` (town hall,
+portico, clock cupola, dome), `school` (brick, two storeys, a bell nobody rings), `bridge`
+(steel truss) and `radio` (lattice mast, guy wires, the red light that is on all night).
+Hazel Park has **one of each**, so the same spire and the same tower recur from yard to
+yard at different bearings — which is what living somewhere actually looks like.
+
+- ⚠️ **Distance is the whole game with these.** A neighbour's roof is ~6 m at ~23 m, so a
+  hero past ~85 m needs to be over 22 m tall just to peek over the rooftops, and the first
+  placement pass (78–96 m) left most of them as a spire tip in a gap. Forward heroes now
+  sit at **40–70 m** and rear heroes at **38–46 m**. Measure the clearance, don't eyeball it.
+- ⚠️ **`def.palette` gained `arc: true`.** A hard palette (what the Odd Sizes use) would have
+  eaten the **golden hour**, which is the finish's whole gift — completion sets `warm = 1`
+  and the day preset walks to gold, but a palette is applied last and wins. An `arc` palette
+  is the *cool end of a day*: applyLightPreset lerps it toward the same warm targets by
+  `warm`. Verified numerically — marge #f4f8ff → #fdd6ae at warm 1, while shag (no `arc`)
+  is byte-identical at warm 0 and warm 1.
+- 🐛 **Fixed: indoor maps built no heroes at all.** v1.26 opened a real window in the north
+  wall of the indoor rooms, but `buildHood`'s indoor branch **returns before the hero loop**,
+  so the shag lounge, the snooker room, the model railway and the windowsill all looked out
+  at nothing. The loop is now `buildHeroes()` and both paths call it.
+- 🐛 **Fixed: `Object3D.add()` returns the PARENT.** `g.add(cone(...)).rotation.x = Math.PI`
+  rotated the whole water tower under the ground — invisible, and it looked exactly like the
+  hero had never been built. There are three other places in this file that chain off `add`;
+  don't add a fourth.
+- 🐛 **Water Tower Hill had no water tower.** Same class of bug as the Putt Hutt's missing
+  windmill (v1.13): the map was named for a thing that was never built. It has one now, at
+  `s: 1.3` and close enough that you look up at it.
+
+**2. The mowers (`makeMower`) — seven machines that read as seven machines.** They shared one
+box-with-wheels body and differed only in colour and width.
+
+| gear | what it now is |
+|---|---|
+| Old Faithful | the tired one: 5 rust patches on the deck **and down its sides**, a bent muffler, a faded badge, taped grips, a dent nobody hammered out |
+| The Self-Propelled | a **drive belt cover** along the deck top, an axle housing and pulley, bigger rear wheels, and the **drive bail** hooped over the grip |
+| The Wide-Deck | commercial: **two spindles**, a second handle brace, rubber hand pads, a bigger chute |
+| The Titan | a walk-behind the size of a door: **twin drive levers** and a control panel with a kill switch, not a push bar; 3 spindles; knobbly drive wheels |
+| The Hover | **no wheels, none** — a shell on a skirt with a fan intake, one pole to a loop grip, riding 7 cm off the grass, and a pouch instead of a bag |
+| The Tweezers | not really a mower: a 22 cm head, a blade disc, a work light, a slim wand to a pistol grip, a battery pack and a collection cup |
+| The Rider | a small tractor at last: bonnet, grille, headlamps, exhaust stack, steering column, **a seat with a back**, fenders, footplate, anti-scalp rollers and a deck-lift lever |
+
+Plus, on every walk-behind: **height-adjust levers** (notched quadrant, raked lever, red
+knob) at each wheel, a **throttle cable** clipped up the right handle tube from the engine
+to the lever under the grip, and a **duct** from the deck into the bag mouth.
+
+- ⚠️ **No full-width plate on the deck top.** The first pass laid a dark plate over the whole
+  deck and hid the paint — which is an *earned reward* (`save.paint`) — so the machine read
+  as one grey blob. Only a rim rail and the engine's own plate sit up there now.
+- ⚠️ **Height levers go OUTBOARD of the deck.** Tucked inboard they sat *inside* the deck box
+  and all you ever saw was the red knob poking through the paint.
+- The contract with game.js is unchanged and is the thing to preserve: `deckLocal`,
+  `bag`, `bagLocal`, and `userData.wheel` on anything that should roll. Verified across all
+  seven: deck alignment exact, bag fill→dump on each (push 1, hover 2, titan 4, rider 3
+  dumps on a scripted mow with a reduced cap).
+
+**3. `__fc.shoot(name, port, w, h)` and `__fc.gl()`** — the screenshot recipe is now IN the
+game instead of being re-derived every session. The Browser pane never composites this
+canvas, so size + render + `toDataURL` **in one task** is the only thing that returns real
+pixels; `shoot` POSTs the PNG to `tools-shot-receiver.mjs` (workspace root, run it with the
+portable node and pass a port). ⚠️ Mow a patch at the camera first or the foreground is a
+wall of grass.
+
+**Verified: 44/44 jobs boot → mow → complete, 0 console errors**, deck alignment exact on
+every gear, bag round-trips, and the golden hour still lands on maps that now have their own
+light.
 
 ## v1.14 – v1.19 (2026-08-11) — backdrops, a fourth book, and pattern scoring
 

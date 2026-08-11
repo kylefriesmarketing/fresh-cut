@@ -157,6 +157,259 @@ function washingLine(rng) {
   return g;
 }
 
+// ---- THE TOWN'S OWN SKYLINE ----
+// Pop's route is not the goofy book. These are the things a small town actually puts on
+// its horizon, and Hazel Park only has one of each — so the same water tower, the same
+// spire and the same elevator recur from yard to yard at different bearings, which is
+// exactly what living somewhere looks like. All built FRONT-TOWARD +Z (the player looks
+// down -z at the street), and `h.rot` turns any of them.
+const TOWN = {
+  tower(g, s, h) {                              // the water tower: this town's whole silhouette
+    const legR = 5.2 * s, tankY = 15 * s, steel = h.c2 || 0x8f9490;
+    const tilt = Math.atan2(legR - 3.2 * s, tankY);
+    for (let i = 0; i < 4; i++) {
+      const hold = new THREE.Group(); hold.rotation.y = i * Math.PI / 2 + Math.PI / 4;
+      const leg = cyl(0.30 * s, 0.42 * s, tankY, steel, (legR + 3.2 * s) / 2, tankY / 2, 0, 6);
+      leg.rotation.z = tilt; hold.add(leg); g.add(hold);
+    }
+    for (const [y, r] of [[tankY * 0.42, 4.6 * s], [tankY * 0.78, 3.7 * s]]) {
+      const ring = new THREE.Mesh(new THREE.TorusGeometry(r, 0.11 * s, 4, 12), mat(steel));
+      ring.position.y = y; ring.rotation.x = Math.PI / 2; g.add(ring);
+    }
+    g.add(cyl(0.5 * s, 0.5 * s, tankY, steel, 0, tankY / 2, 0, 8));          // the standpipe
+    const c = h.c || 0xcfd4d2;
+    // ⚠️ Object3D.add returns the PARENT. Chaining `.rotation.x` off it flipped the whole
+    // tower under the ground — invisible, and it looked exactly like the hero never built.
+    const und = cone(4.6 * s, 3.4 * s, c, 0, tankY + 1.7 * s, 0, 14);
+    und.rotation.x = Math.PI; g.add(und);                                    // tank underside
+    g.add(cyl(4.6 * s, 4.6 * s, 6.2 * s, c, 0, tankY + 6.5 * s, 0, 14));
+    g.add(cyl(0.001, 4.6 * s, 2.2 * s, c, 0, tankY + 10.7 * s, 0, 14));      // the domed top
+    g.add(cyl(4.75 * s, 4.75 * s, 1.5 * s, h.band || 0x4f7a8a, 0, tankY + 6 * s, 0, 14)); // the name band
+    const walk = new THREE.Mesh(new THREE.TorusGeometry(5.0 * s, 0.09 * s, 4, 14), mat(steel));
+    walk.position.y = tankY + 3.6 * s; walk.rotation.x = Math.PI / 2; g.add(walk);
+  },
+  elevator(g, s, h) {                           // the grain elevator on the rail line
+    const c = h.c || 0xd8d2c4, r = 3.2 * s, n = 6, span = (n - 1) * r * 1.94;
+    for (let i = 0; i < n; i++) g.add(cyl(r, r, 22 * s, c, -span / 2 + i * r * 1.94, 11 * s, 0, 12));
+    g.add(box(span + r * 2.4, 6 * s, r * 2.4, 0xcac3b3, 0, 25 * s, 0));      // headhouse
+    g.add(box(span + r * 3.2, 0.7 * s, r * 3.0, 0x8f8578, 0, 28.4 * s, 0));  // its eave
+    g.add(box(3.6 * s, 9 * s, 3.6 * s, 0xb9b2a4, span * 0.18, 32 * s, 0));   // the leg that lifts the grain
+    g.add(cone(3.2 * s, 3 * s, 0x6f6a60, span * 0.18, 38 * s, 0, 6));
+    // the conveyor gallery down to the shed — without it the silo bank reads as a colonnade
+    const gal = box(1.9 * s, 2.2 * s, 15 * s, 0xa8a294, -span / 2 - 2.4 * s, 20 * s, r * 0.9);
+    gal.rotation.x = 0.55; gal.rotation.y = 0.35; g.add(gal);
+    g.add(box(10 * s, 5.5 * s, 8 * s, h.shed || 0x9c4f42, -span / 2 - 4 * s, 2.75 * s, r * 1.6));  // the tip shed
+    const rf = gableRoof(10 * s, 8 * s, 1.6 * s, 0x4f4a44, h.shed || 0x9c4f42);
+    rf.position.set(-span / 2 - 4 * s, 5.5 * s, r * 1.6); g.add(rf);
+  },
+  church(g, s, h) {                             // nave, tower, clock, spire
+    const c = h.c || 0xe6dfcb, roof = h.roof || 0x5f5750;
+    g.add(box(10 * s, 7 * s, 19 * s, c, 0, 3.5 * s, -2 * s));
+    const r = gableRoof(10 * s, 19 * s, 3.4 * s, roof, c); r.position.set(0, 7 * s, -2 * s); g.add(r);
+    for (let i = 0; i < 4; i++) for (const sx of [-5.1 * s, 5.1 * s])       // lancet windows down the nave
+      g.add(box(0.3 * s, 2.6 * s, 1.2 * s, 0x6b7f86, sx, 3.6 * s, -8.5 * s + i * 4.4 * s));
+    g.add(box(6 * s, 17 * s, 6 * s, c, 0, 8.5 * s, 8.5 * s));               // the tower
+    for (const sz of [11.6 * s, 5.4 * s]) for (const sx of [-0.7 * s, 0.7 * s])   // paired belfry louvres
+      g.add(box(1.0 * s, 3.4 * s, 0.3 * s, 0x4a4a44, sx, 14.5 * s, sz));
+    const face = cyl(1.5 * s, 1.5 * s, 0.3 * s, 0xf4eedd, 0, 10.2 * s, 11.65 * s, 14); face.rotation.x = Math.PI / 2; g.add(face);
+    for (const [len, ang] of [[0.8, -0.9], [1.15, 0.5]]) {   // ten past two, and it has been for years
+      const hd = new THREE.Group(); hd.position.set(0, 10.2 * s, 11.85 * s); hd.rotation.z = ang;
+      hd.add(box(0.13 * s, len * s, 0.1 * s, 0x3a3a36, 0, len * s / 2, 0));   // pivot at the boss, not the middle
+      g.add(hd);
+    }
+    const sp = cone(4.4 * s, 11 * s, roof, 0, 22.5 * s, 8.5 * s, 4); sp.rotation.y = Math.PI / 4; g.add(sp);
+    g.add(box(0.22 * s, 2.2 * s, 0.22 * s, 0xd9c88a, 0, 29 * s, 8.5 * s));
+    g.add(box(1.1 * s, 0.22 * s, 0.22 * s, 0xd9c88a, 0, 29.4 * s, 8.5 * s));
+  },
+  mill(g, s, h) {                               // the old mill, and the chimney you steer by
+    const c = h.c || 0x9c6a55;
+    g.add(box(30 * s, 12 * s, 12 * s, c, 0, 6 * s, 0));
+    for (let f = 0; f < 3; f++) for (let i = 0; i < 9; i++)
+      g.add(box(1.5 * s, 2.1 * s, 0.4 * s, 0x6f7c84, -12.6 * s + i * 3.15 * s, 2.6 * s + f * 4 * s, 6.1 * s));
+    const r = gableRoof(30 * s, 12 * s, 2.4 * s, 0x4f4a44, c); r.position.y = 12 * s; g.add(r);
+    g.add(cyl(1.4 * s, 2.1 * s, 30 * s, h.stack || 0xa4644d, -11 * s, 15 * s, -7 * s, 12));
+    g.add(cyl(1.8 * s, 1.6 * s, 1.6 * s, 0x7d4a3a, -11 * s, 30.4 * s, -7 * s, 12));   // the crown
+    g.add(box(9 * s, 6 * s, 8 * s, 0xb0a89a, 16 * s, 3 * s, 3 * s));                  // boiler house
+    g.add(box(9.4 * s, 0.5 * s, 8.4 * s, 0x6b6258, 16 * s, 6.2 * s, 3 * s));
+  },
+  hospital(g, s, h) {                           // the county hospital: a slab with a lit stair tower
+    const c = h.c || 0xdcd8cc;
+    g.add(box(32 * s, 17 * s, 13 * s, c, 0, 8.5 * s, 0));
+    for (let f = 0; f < 5; f++) g.add(box(29 * s, 1.8 * s, 0.4 * s, 0x7f95a4, 0, 2.8 * s + f * 3.2 * s, 6.6 * s));
+    g.add(box(6 * s, 21 * s, 6.4 * s, 0xcfcabd, -13 * s, 10.5 * s, 0));               // stair tower
+    for (let f = 0; f < 6; f++) g.add(box(2.6 * s, 1.2 * s, 0.4 * s, 0x93a9b4, -13 * s, 3 * s + f * 3.2 * s, 3.3 * s));
+    g.add(box(17 * s, 6 * s, 10 * s, c, 15 * s, 3 * s, 3 * s));                       // the entrance wing
+    g.add(box(8 * s, 0.5 * s, 4.4 * s, 0xb9b2a4, 15 * s, 6.3 * s, 8.4 * s));          // the canopy over the doors
+    g.add(box(9 * s, 2.6 * s, 4 * s, 0xc9c2b2, 3 * s, 18.3 * s, 0));                  // rooftop plant
+    g.add(box(2.6 * s, 0.8 * s, 0.3 * s, 0xc0392b, -13 * s, 19 * s, 3.3 * s));        // the only red in town
+    g.add(box(0.8 * s, 2.6 * s, 0.3 * s, 0xc0392b, -13 * s, 19 * s, 3.3 * s));
+  },
+  civic(g, s, h) {                              // town hall: portico, pediment, a clock that is slow
+    const c = h.c || 0xd8d2c0, trim = 0xefe9da;
+    g.add(box(26 * s, 11 * s, 14 * s, c, 0, 5.5 * s, 0));
+    const r = gableRoof(26 * s, 14 * s, 3 * s, h.roof || 0x5f5750, c); r.position.y = 11 * s; g.add(r);
+    for (let i = 0; i < 6; i++) g.add(cyl(0.6 * s, 0.6 * s, 9.4 * s, trim, -6.5 * s + i * 2.6 * s, 4.7 * s, 7.4 * s, 8));
+    g.add(box(16 * s, 1.3 * s, 3.2 * s, trim, 0, 10 * s, 7.2 * s));                   // entablature
+    g.add(box(16 * s, 0.6 * s, 4 * s, trim, 0, 0.3 * s, 7.6 * s));                    // the steps
+    g.add(box(6.4 * s, 4.6 * s, 6.4 * s, trim, 0, 14.4 * s, 0));                      // cupola base
+    const face = cyl(1.5 * s, 1.5 * s, 0.3 * s, 0xf6f1e2, 0, 14.6 * s, 3.35 * s, 14); face.rotation.x = Math.PI / 2; g.add(face);
+    g.add(cyl(2.4 * s, 2.9 * s, 3 * s, trim, 0, 18.2 * s, 0, 10));
+    g.add(sph(2.5 * s, h.dome || 0x6f8a78, 0, 20 * s, 0, 12));
+    g.add(cyl(0.16 * s, 0.16 * s, 4.5 * s, 0xd9c88a, 0, 23.4 * s, 0, 6));
+  },
+  school(g, s, h) {                             // brick, two storeys, a bell nobody rings
+    const c = h.c || 0xb4735c;
+    g.add(box(30 * s, 9 * s, 12 * s, c, 0, 4.5 * s, 0));
+    for (let f = 0; f < 2; f++) for (let i = 0; i < 10; i++)
+      g.add(box(1.8 * s, 2.2 * s, 0.4 * s, 0x8fa8b4, -13 * s + i * 2.9 * s, 2.6 * s + f * 4.2 * s, 6.1 * s));
+    g.add(box(31 * s, 0.8 * s, 13 * s, 0x6b6258, 0, 9.3 * s, 0));                     // parapet
+    g.add(box(7 * s, 3.4 * s, 7 * s, 0xefe9da, 0, 11.4 * s, 0));                      // bell cupola
+    g.add(cone(3.6 * s, 4 * s, h.roof || 0x5f6b70, 0, 15.2 * s, 0, 8));
+    g.add(box(15 * s, 6.5 * s, 15 * s, 0xc4b9a4, 21 * s, 3.25 * s, -1 * s));          // the gym
+    g.add(box(15.4 * s, 0.6 * s, 15.4 * s, 0x6b6258, 21 * s, 6.8 * s, -1 * s));
+    g.add(cyl(0.14 * s, 0.14 * s, 11 * s, 0xe4dfd4, -17 * s, 5.5 * s, 8 * s, 6));     // flagpole
+  },
+  bridge(g, s, h) {                             // the truss the road crosses the water on
+    const c = h.c || 0x8a8f8a, L = 44 * s, T = 8 * s, y0 = 5.6 * s;
+    g.add(box(L, 0.9 * s, 7.4 * s, 0x9c9a92, 0, 5 * s, 0));
+    for (const sz of [-3.6 * s, 3.6 * s]) {
+      g.add(box(L, 0.7 * s, 0.6 * s, c, 0, y0, sz));
+      g.add(box(L, 0.7 * s, 0.6 * s, c, 0, y0 + T, sz));
+      for (let i = 0; i <= 6; i++) g.add(box(0.5 * s, T, 0.45 * s, c, -L / 2 + i * L / 6, y0 + T / 2, sz));
+      for (let i = 0; i < 6; i++) {
+        const d = box(0.4 * s, Math.hypot(L / 6, T), 0.4 * s, c, -L / 2 + (i + 0.5) * L / 6, y0 + T / 2, sz);
+        d.rotation.z = (i % 2 ? 1 : -1) * Math.atan2(L / 6, T); g.add(d);
+      }
+    }
+    for (const sx of [-L / 2 + 1.5 * s, L / 2 - 1.5 * s]) g.add(box(5 * s, 5 * s, 9.5 * s, h.pier || 0xb0a89a, sx, 2.5 * s, 0));
+  },
+  radio(g, s, h) {                              // the mast out past the last streetlight
+    const H2 = 38 * s, c = h.c || 0xb9bcc0;
+    for (let i = 0; i < 3; i++) {
+      const hold = new THREE.Group(); hold.rotation.y = i * 2.094;
+      const leg = cyl(0.14 * s, 0.2 * s, H2, c, 1.5 * s, H2 / 2, 0, 5);
+      leg.rotation.z = Math.atan2(1.1 * s, H2); hold.add(leg); g.add(hold);
+    }
+    for (let i = 1; i < 10; i++) {
+      const y = i * H2 / 10;
+      const r = new THREE.Mesh(new THREE.TorusGeometry(1.5 * s * (1 - y / H2 * 0.55), 0.07 * s, 3, 3), mat(c));
+      r.position.y = y; r.rotation.x = Math.PI / 2; g.add(r);
+    }
+    for (let i = 0; i < 3; i++) {                // guy wires, which is what makes it read as a mast
+      const hold = new THREE.Group(); hold.rotation.y = i * 2.094 + 1.0;
+      const len = Math.hypot(11 * s, H2 * 0.82);
+      const w = cyl(0.05 * s, 0.05 * s, len, 0x8f9490, 5.5 * s, H2 * 0.41, 0, 4);
+      w.rotation.z = Math.atan2(11 * s, H2 * 0.82); hold.add(w); g.add(hold);
+    }
+    g.add(sph(0.55 * s, 0xd8483c, 0, H2 + 0.7 * s, 0, 8));   // the red light that is on all night
+  },
+};
+
+// The heroes are built by both paths — the indoor rooms open a real window in the north
+// wall (v1.26) and used to look out at NOTHING, because that branch returns early.
+function buildHeroes(root, def, cx, cz) {
+  for (const h of def.hero || []) {
+    const g = new THREE.Group();
+    const s = h.s || 1;
+    if (h.k === 'ball') {                       // a colossal ball of twine, on its shelter
+      const b = sph(9 * s, h.c || 0xc9a86a, 0, 9 * s, 0, 16); g.add(b);
+      // wound bands. ⚠️ Their radius must follow the SPHERE'S SILHOUETTE — sqrt(R²-dy²) —
+      // not a linear taper, or near the poles the bands stand proud of the ball and you
+      // see straight through the gap into a hollow shell.
+      const R = 9 * s;
+      for (let i = 0; i < 15; i++) {
+        const dy = (i - 7) * (R * 0.125);
+        const rr = Math.sqrt(Math.max(0.0001, R * R - dy * dy)) * 1.005;
+        if (rr < 0.6 * s) continue;
+        const r = new THREE.Mesh(new THREE.TorusGeometry(rr, 0.26 * s, 5, 26), mat(0xb08f52));
+        r.position.y = R + dy; r.rotation.x = Math.PI / 2 + (i - 7) * 0.02; g.add(r);
+      }
+      g.add(cyl(11 * s, 11 * s, 0.7 * s, 0x9c968a, 0, 0.35 * s, 0, 18));
+      // ⚠️ NO SHELTER ROOF. It was a 28m cone at y34 — from anywhere on the lot it read as
+      // a black canopy over the entire sky, and I mistook it for a treeline twice.
+      // The ball IS the landmark; it does not need a hat.
+    } else if (h.k === 'chess') {               // pieces the size of gasholders
+      const c = h.c || 0xf2ead8;
+      g.add(cyl(3.2 * s, 4.0 * s, 2.2 * s, c, 0, 1.1 * s, 0, 14));
+      g.add(cyl(1.5 * s, 2.6 * s, 9 * s, c, 0, 6.7 * s, 0, 14));
+      g.add(cyl(3.4 * s, 2.2 * s, 1.6 * s, c, 0, 12 * s, 0, 14));
+      if (h.piece === 'king') { g.add(cyl(2.4 * s, 2.6 * s, 3 * s, c, 0, 14.3 * s, 0, 14)); g.add(box(0.8 * s, 3.4 * s, 0.8 * s, c, 0, 17 * s, 0)); g.add(box(2.6 * s, 0.8 * s, 0.8 * s, c, 0, 16.4 * s, 0)); }
+      else g.add(sph(2.6 * s, c, 0, 14 * s, 0, 12));
+    } else if (h.k === 'can') {                 // a watering can you could park in
+      g.add(cyl(5.5 * s, 6.2 * s, 9 * s, h.c || 0x4f7a52, 0, 4.5 * s, 0, 16));
+      g.add(cyl(5.6 * s, 5.0 * s, 0.8 * s, h.c || 0x4f7a52, 0, 9.2 * s, 0, 16));
+      const sp = cyl(1.0 * s, 1.8 * s, 12 * s, h.c || 0x4f7a52, -7 * s, 6.5 * s, 0, 10); sp.rotation.z = 0.9; g.add(sp);
+      g.add(cyl(2.4 * s, 2.4 * s, 0.7 * s, 0x8a8f94, -11.5 * s, 10.6 * s, 0, 12));
+      const hd = new THREE.Mesh(new THREE.TorusGeometry(3.4 * s, 0.55 * s, 6, 16, Math.PI), mat(h.c || 0x4f7a52));
+      hd.position.set(2 * s, 9.4 * s, 0); hd.rotation.y = Math.PI / 2; g.add(hd);
+    } else if (h.k === 'door') {                // the front door of something enormous
+      g.add(box(26 * s, 34 * s, 1.4 * s, h.c || 0xd8cbb4, 0, 17 * s, 0));
+      g.add(box(11 * s, 22 * s, 0.9 * s, h.door || 0x7a4a33, 0, 11 * s, 0.9 * s));
+      g.add(sph(1.1 * s, 0xd9b44a, 3.6 * s, 11 * s, 1.5 * s, 10));
+      g.add(box(28 * s, 2.2 * s, 3.4 * s, 0x8f8578, 0, 34 * s, 0.6 * s));
+    } else if (h.k === 'pagoda') {              // a castle keep, tiered, above the bonsai
+      g.add(box(34 * s, 11 * s, 27 * s, 0xb9b2a4, 0, 5.5 * s, 0));          // stone base
+      g.add(box(30 * s, 1.6 * s, 23 * s, 0x8f8578, 0, 11.6 * s, 0));
+      for (let t = 0; t < 4; t++) {
+        const w = (24 - t * 4.4) * s, d = (18 - t * 3.2) * s, y = 12.4 * s + t * 7.4 * s;
+        g.add(box(w, 5.4 * s, d, 0xf4efe2, 0, y + 2.7 * s, 0));             // plaster storey
+        for (let k = 0; k < 3; k++) g.add(box(w * 0.16, 3.2 * s, 0.3 * s, 0x3f4750, (k - 1) * w * 0.3, y + 2.9 * s, d / 2 + 0.2 * s));
+        const roof = cone(Math.hypot(w, d) * 0.66, 3.6 * s, h.roof || 0x39434c, 0, y + 7.3 * s, 0, 4);
+        roof.rotation.y = Math.PI / 4; g.add(roof);
+        g.add(box(w + 3.4 * s, 0.6 * s, d + 3.4 * s, 0x2b3138, 0, y + 5.5 * s, 0));  // flared eave
+      }
+      g.add(cyl(0.55 * s, 0.55 * s, 6 * s, 0xd9b44a, 0, 45 * s, 0, 8));
+      g.add(sph(1.3 * s, 0xd9b44a, 0, 48 * s, 0, 10));
+    } else if (h.k === 'village') {             // a fairy-tale village, roofs like witches' hats
+      for (let i = 0; i < 10; i++) {
+        const a = (i / 10) * 6.283 + 0.3, rad = (13 + ((i * 37) % 11)) * s;
+        const w = (4.4 + ((i * 13) % 3)) * s, hh = (5 + ((i * 7) % 4)) * s;
+        const body = [0xe8dfc9, 0xdcc9b0, 0xd8c0a8, 0xe4d2b8][i % 4];
+        const roofC = [0x8f5a3f, 0x6b4a38, 0x7a5240, 0x5e4433][i % 4];
+        const cot = new THREE.Group();
+        cot.add(box(w, hh, w * 0.9, body, 0, hh / 2, 0));
+        cot.add(cone(w * 0.86, hh * 1.35, roofC, 0, hh + hh * 0.66, 0, 7));   // steep pointed roof
+        cot.add(box(w * 0.24, hh * 0.46, 0.25 * s, 0x5e4a35, 0, hh * 0.23, w * 0.46));
+        cot.add(box(w * 0.2, w * 0.2, 0.2 * s, 0xf2d98a, -w * 0.28, hh * 0.62, w * 0.46));
+        cot.add(box(0.7 * s, 2 * s, 0.7 * s, 0x9a7360, w * 0.3, hh + 1.1 * s, 0));
+        cot.position.set(Math.sin(a) * rad, 0, Math.cos(a) * rad * 0.55);
+        cot.rotation.y = a + Math.PI;
+        g.add(cot);
+      }
+      for (let i = 0; i < 6; i++) {              // toadstools, because it is that kind of village
+        const a = i * 1.21, r = (19 + i * 2.2) * s;
+        const x = Math.sin(a) * r, z = Math.cos(a) * r * 0.55;
+        g.add(cyl(0.9 * s, 1.15 * s, 5.5 * s, 0xf4efe2, x, 2.75 * s, z, 8));
+        g.add(sph(3.2 * s, i % 2 ? 0xc0392b : 0xd8823f, x, 6.1 * s, z, 11));
+      }
+    } else if (h.k === 'manor') {               // the big house the gardens belong to
+      const W2 = 46 * s, H2 = 13 * s, D2 = 15 * s;
+      g.add(box(W2, H2, D2, h.c || 0xd8cbb4, 0, H2 / 2, 0));
+      const r1 = gableRoof(W2, D2, 5.2 * s, 0x574c46, h.c || 0xd8cbb4); r1.position.y = H2; g.add(r1);
+      g.add(box(13 * s, H2 + 3.4 * s, D2 + 1.2 * s, 0xe4dac4, 0, (H2 + 3.4 * s) / 2, 0));
+      const r2 = gableRoof(13 * s, D2 + 1.2 * s, 4.2 * s, 0x574c46, 0xe4dac4); r2.position.y = H2 + 3.4 * s; g.add(r2);
+      for (let i = 0; i < 9; i++) {
+        const x = -W2 / 2 + 3.4 * s + i * (W2 - 6.8 * s) / 8;
+        for (const y of [4.2 * s, 9.4 * s]) g.add(box(1.9 * s, 2.8 * s, 0.4 * s, 0x8fb6c9, x, y, D2 / 2 + 0.12 * s));
+      }
+      g.add(box(3 * s, 5 * s, 0.5 * s, 0x6a4a33, 0, 2.5 * s, D2 / 2 + 0.3 * s));
+      for (const sx of [-W2 * 0.36, W2 * 0.36]) g.add(box(2.4 * s, 6 * s, 2.4 * s, 0x9a7360, sx, H2 + 6.5 * s, 0));
+    } else if (h.k === 'gnome') {               // one titanic gnome, watching
+      g.add(cyl(3.4 * s, 4.2 * s, 7 * s, 0x3b6ea5, 0, 3.5 * s, 0, 14));
+      g.add(sph(3.0 * s, 0xe8b48c, 0, 8.6 * s, 0, 12));
+      g.add(cone(3.2 * s, 6 * s, 0xc0392b, 0, 13 * s, 0, 14));
+      g.add(sph(2.2 * s, 0xf2ead8, 0, 7.2 * s, 2.2 * s, 12));
+      for (const sx of [-3.6, 3.6]) g.add(cyl(0.9 * s, 0.9 * s, 4.5 * s, 0x3b6ea5, sx * s, 4.6 * s, 0, 8));
+    } else if (TOWN[h.k]) {
+      TOWN[h.k](g, s, h);
+    }
+    g.position.set(cx + (h.x || 0), 0, cz + (h.z || 0));
+    if (h.rot) g.rotation.y = h.rot;
+    g.traverse(o => { if (o.isMesh) o.castShadow = false; });
+    brighten(g, h.lift ?? 0.26); root.add(g);
+  }
+}
+
 export function buildHood(scene, def, world, quality) {
   const root = new THREE.Group(); world.group.add(root);
   const P = hoodOf(def);
@@ -218,6 +471,7 @@ export function buildHood(scene, def, world, quality) {
     ceil.rotation.x = Math.PI / 2; ceil.position.set(cx, wh, cz); room.add(ceil);
     room.traverse(o => { if (o.isMesh) o.castShadow = false; });
     brighten(room, R.lift ?? 0.34); root.add(room);
+    buildHeroes(root, def, cx, cz);      // the thing beyond the window — the whole point of opening one
     return { group: root, hood: P };     // no ring, no landmarks, no sky business
   }
 
@@ -330,107 +584,7 @@ export function buildHood(scene, def, world, quality) {
   ring.traverse(m => { if (m.isMesh) m.castShadow = false; });
   brighten(ring, 0.22); root.add(ring);
 
-  // ---- HEROES: the one enormous thing that tells you what this place is. The Odd Sizes
-  // live or die on these — a map called The Ball of Twine needs a ball of twine on the
-  // horizon, not a treeline. Built out here so they carry no collision and no grass. ----
-  for (const h of def.hero || []) {
-    const g = new THREE.Group();
-    const s = h.s || 1;
-    if (h.k === 'ball') {                       // a colossal ball of twine, on its shelter
-      const b = sph(9 * s, h.c || 0xc9a86a, 0, 9 * s, 0, 16); g.add(b);
-      // wound bands. ⚠️ Their radius must follow the SPHERE'S SILHOUETTE — sqrt(R²-dy²) —
-      // not a linear taper, or near the poles the bands stand proud of the ball and you
-      // see straight through the gap into a hollow shell.
-      const R = 9 * s;
-      for (let i = 0; i < 15; i++) {
-        const dy = (i - 7) * (R * 0.125);
-        const rr = Math.sqrt(Math.max(0.0001, R * R - dy * dy)) * 1.005;
-        if (rr < 0.6 * s) continue;
-        const r = new THREE.Mesh(new THREE.TorusGeometry(rr, 0.26 * s, 5, 26), mat(0xb08f52));
-        r.position.y = R + dy; r.rotation.x = Math.PI / 2 + (i - 7) * 0.02; g.add(r);
-      }
-      g.add(cyl(11 * s, 11 * s, 0.7 * s, 0x9c968a, 0, 0.35 * s, 0, 18));
-      // ⚠️ NO SHELTER ROOF. It was a 28m cone at y34 — from anywhere on the lot it read as
-      // a black canopy over the entire sky, and I mistook it for a treeline twice.
-      // The ball IS the landmark; it does not need a hat.
-    } else if (h.k === 'chess') {               // pieces the size of gasholders
-      const c = h.c || 0xf2ead8;
-      g.add(cyl(3.2 * s, 4.0 * s, 2.2 * s, c, 0, 1.1 * s, 0, 14));
-      g.add(cyl(1.5 * s, 2.6 * s, 9 * s, c, 0, 6.7 * s, 0, 14));
-      g.add(cyl(3.4 * s, 2.2 * s, 1.6 * s, c, 0, 12 * s, 0, 14));
-      if (h.piece === 'king') { g.add(cyl(2.4 * s, 2.6 * s, 3 * s, c, 0, 14.3 * s, 0, 14)); g.add(box(0.8 * s, 3.4 * s, 0.8 * s, c, 0, 17 * s, 0)); g.add(box(2.6 * s, 0.8 * s, 0.8 * s, c, 0, 16.4 * s, 0)); }
-      else g.add(sph(2.6 * s, c, 0, 14 * s, 0, 12));
-    } else if (h.k === 'can') {                 // a watering can you could park in
-      g.add(cyl(5.5 * s, 6.2 * s, 9 * s, h.c || 0x4f7a52, 0, 4.5 * s, 0, 16));
-      g.add(cyl(5.6 * s, 5.0 * s, 0.8 * s, h.c || 0x4f7a52, 0, 9.2 * s, 0, 16));
-      const sp = cyl(1.0 * s, 1.8 * s, 12 * s, h.c || 0x4f7a52, -7 * s, 6.5 * s, 0, 10); sp.rotation.z = 0.9; g.add(sp);
-      g.add(cyl(2.4 * s, 2.4 * s, 0.7 * s, 0x8a8f94, -11.5 * s, 10.6 * s, 0, 12));
-      const hd = new THREE.Mesh(new THREE.TorusGeometry(3.4 * s, 0.55 * s, 6, 16, Math.PI), mat(h.c || 0x4f7a52));
-      hd.position.set(2 * s, 9.4 * s, 0); hd.rotation.y = Math.PI / 2; g.add(hd);
-    } else if (h.k === 'door') {                // the front door of something enormous
-      g.add(box(26 * s, 34 * s, 1.4 * s, h.c || 0xd8cbb4, 0, 17 * s, 0));
-      g.add(box(11 * s, 22 * s, 0.9 * s, h.door || 0x7a4a33, 0, 11 * s, 0.9 * s));
-      g.add(sph(1.1 * s, 0xd9b44a, 3.6 * s, 11 * s, 1.5 * s, 10));
-      g.add(box(28 * s, 2.2 * s, 3.4 * s, 0x8f8578, 0, 34 * s, 0.6 * s));
-    } else if (h.k === 'pagoda') {              // a castle keep, tiered, above the bonsai
-      g.add(box(34 * s, 11 * s, 27 * s, 0xb9b2a4, 0, 5.5 * s, 0));          // stone base
-      g.add(box(30 * s, 1.6 * s, 23 * s, 0x8f8578, 0, 11.6 * s, 0));
-      for (let t = 0; t < 4; t++) {
-        const w = (24 - t * 4.4) * s, d = (18 - t * 3.2) * s, y = 12.4 * s + t * 7.4 * s;
-        g.add(box(w, 5.4 * s, d, 0xf4efe2, 0, y + 2.7 * s, 0));             // plaster storey
-        for (let k = 0; k < 3; k++) g.add(box(w * 0.16, 3.2 * s, 0.3 * s, 0x3f4750, (k - 1) * w * 0.3, y + 2.9 * s, d / 2 + 0.2 * s));
-        const roof = cone(Math.hypot(w, d) * 0.66, 3.6 * s, h.roof || 0x39434c, 0, y + 7.3 * s, 0, 4);
-        roof.rotation.y = Math.PI / 4; g.add(roof);
-        g.add(box(w + 3.4 * s, 0.6 * s, d + 3.4 * s, 0x2b3138, 0, y + 5.5 * s, 0));  // flared eave
-      }
-      g.add(cyl(0.55 * s, 0.55 * s, 6 * s, 0xd9b44a, 0, 45 * s, 0, 8));
-      g.add(sph(1.3 * s, 0xd9b44a, 0, 48 * s, 0, 10));
-    } else if (h.k === 'village') {             // a fairy-tale village, roofs like witches' hats
-      for (let i = 0; i < 10; i++) {
-        const a = (i / 10) * 6.283 + 0.3, rad = (13 + ((i * 37) % 11)) * s;
-        const w = (4.4 + ((i * 13) % 3)) * s, hh = (5 + ((i * 7) % 4)) * s;
-        const body = [0xe8dfc9, 0xdcc9b0, 0xd8c0a8, 0xe4d2b8][i % 4];
-        const roofC = [0x8f5a3f, 0x6b4a38, 0x7a5240, 0x5e4433][i % 4];
-        const cot = new THREE.Group();
-        cot.add(box(w, hh, w * 0.9, body, 0, hh / 2, 0));
-        cot.add(cone(w * 0.86, hh * 1.35, roofC, 0, hh + hh * 0.66, 0, 7));   // steep pointed roof
-        cot.add(box(w * 0.24, hh * 0.46, 0.25 * s, 0x5e4a35, 0, hh * 0.23, w * 0.46));
-        cot.add(box(w * 0.2, w * 0.2, 0.2 * s, 0xf2d98a, -w * 0.28, hh * 0.62, w * 0.46));
-        cot.add(box(0.7 * s, 2 * s, 0.7 * s, 0x9a7360, w * 0.3, hh + 1.1 * s, 0));
-        cot.position.set(Math.sin(a) * rad, 0, Math.cos(a) * rad * 0.55);
-        cot.rotation.y = a + Math.PI;
-        g.add(cot);
-      }
-      for (let i = 0; i < 6; i++) {              // toadstools, because it is that kind of village
-        const a = i * 1.21, r = (19 + i * 2.2) * s;
-        const x = Math.sin(a) * r, z = Math.cos(a) * r * 0.55;
-        g.add(cyl(0.9 * s, 1.15 * s, 5.5 * s, 0xf4efe2, x, 2.75 * s, z, 8));
-        g.add(sph(3.2 * s, i % 2 ? 0xc0392b : 0xd8823f, x, 6.1 * s, z, 11));
-      }
-    } else if (h.k === 'manor') {               // the big house the gardens belong to
-      const W2 = 46 * s, H2 = 13 * s, D2 = 15 * s;
-      g.add(box(W2, H2, D2, h.c || 0xd8cbb4, 0, H2 / 2, 0));
-      const r1 = gableRoof(W2, D2, 5.2 * s, 0x574c46, h.c || 0xd8cbb4); r1.position.y = H2; g.add(r1);
-      g.add(box(13 * s, H2 + 3.4 * s, D2 + 1.2 * s, 0xe4dac4, 0, (H2 + 3.4 * s) / 2, 0));
-      const r2 = gableRoof(13 * s, D2 + 1.2 * s, 4.2 * s, 0x574c46, 0xe4dac4); r2.position.y = H2 + 3.4 * s; g.add(r2);
-      for (let i = 0; i < 9; i++) {
-        const x = -W2 / 2 + 3.4 * s + i * (W2 - 6.8 * s) / 8;
-        for (const y of [4.2 * s, 9.4 * s]) g.add(box(1.9 * s, 2.8 * s, 0.4 * s, 0x8fb6c9, x, y, D2 / 2 + 0.12 * s));
-      }
-      g.add(box(3 * s, 5 * s, 0.5 * s, 0x6a4a33, 0, 2.5 * s, D2 / 2 + 0.3 * s));
-      for (const sx of [-W2 * 0.36, W2 * 0.36]) g.add(box(2.4 * s, 6 * s, 2.4 * s, 0x9a7360, sx, H2 + 6.5 * s, 0));
-    } else if (h.k === 'gnome') {               // one titanic gnome, watching
-      g.add(cyl(3.4 * s, 4.2 * s, 7 * s, 0x3b6ea5, 0, 3.5 * s, 0, 14));
-      g.add(sph(3.0 * s, 0xe8b48c, 0, 8.6 * s, 0, 12));
-      g.add(cone(3.2 * s, 6 * s, 0xc0392b, 0, 13 * s, 0, 14));
-      g.add(sph(2.2 * s, 0xf2ead8, 0, 7.2 * s, 2.2 * s, 12));
-      for (const sx of [-3.6, 3.6]) g.add(cyl(0.9 * s, 0.9 * s, 4.5 * s, 0x3b6ea5, sx * s, 4.6 * s, 0, 8));
-    }
-    g.position.set(cx + (h.x || 0), 0, cz + (h.z || 0));
-    if (h.rot) g.rotation.y = h.rot;
-    g.traverse(o => { if (o.isMesh) o.castShadow = false; });
-    brighten(g, h.lift ?? 0.26); root.add(g);
-  }
+  buildHeroes(root, def, cx, cz);   // the landmark this map is named for, if it has one
 
   // ---- the one big thing on the skyline that tells you where you are ----
   const landmark = (mk, x, z) => { mk.traverse(m => { if (m.isMesh) m.castShadow = false; }); brighten(mk, 0.24); mk.position.set(x, 0, z); root.add(mk); };

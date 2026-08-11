@@ -330,6 +330,20 @@ window.__fc = {
   },
   shot: () => renderer.domElement.toDataURL('image/jpeg', 0.85),
   post: () => post,
+  gl: () => ({ renderer, camera, scene }),
+  // Photograph the game from inside it. The Browser pane never composites this canvas, so
+  // the built-in screenshot tools time out and the canvas reports 0×0 — but a WebGL drawing
+  // buffer is only cleared on COMPOSITE, so sizing + rendering + toDataURL IN ONE TASK gives
+  // real pixels. POSTs the PNG to tools-shot-receiver.mjs (repo root of the workspace).
+  // ⚠️ Mow a patch at the camera first, or the foreground is a wall of uncut grass.
+  shoot: (name = 'fc', port = 8399, w = 1280, h = 720) => {
+    renderer.setSize(w, h, false);
+    camera.aspect = w / h; camera.updateProjectionMatrix();
+    if (post && post.available) post.setSize(w, h);
+    drawFrame(0.016);
+    const url = renderer.domElement.toDataURL('image/png');
+    return fetch(`http://localhost:${port}/shot?name=${encodeURIComponent(name)}`, { method: 'POST', body: url }).then(r => r.text());
+  },
   renderOnce: (dt = 0.016) => { if (G && scene) drawFrame(dt); },
   sfx,
 };

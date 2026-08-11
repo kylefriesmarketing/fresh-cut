@@ -481,13 +481,19 @@ function applyLightPreset(world, scene, kind, warm, pal) {
   // quiet Saturday — a sherbet sky over the giant lawn, a sick green over the shag carpet.
   // Applied LAST so it wins over the preset and the golden-hour lerp alike.
   if (pal) {
-    if (pal.sky !== undefined) world.sky.material.color.set(pal.sky);
-    if (pal.fog !== undefined) scene.fog.color.set(pal.fog);
-    if (pal.hemi !== undefined) world.hemi.color.set(pal.hemi);
+    // `arc: true` = a palette that is the COOL END OF A DAY, not a fixed look. The Odd Sizes
+    // want their sherbet sky held flat; Pop's route must not — a hard palette would eat the
+    // golden hour, which is the finish's whole gift. An arc palette walks to the same warm
+    // targets the stock day preset does, so each yard has its own light AND still turns gold.
+    const a = pal.arc ? warm : 0;
+    const P = (hex, gold, k = 1) => pal.arc ? lerpC(hex, gold, a * k) : hex;
+    if (pal.sky !== undefined) world.sky.material.color.set(P(pal.sky, 0xffcf9a, 0.85));
+    if (pal.fog !== undefined) scene.fog.color.set(P(pal.fog, 0xf0c894));
+    if (pal.hemi !== undefined) world.hemi.color.set(P(pal.hemi, 0xf5d9b8));
     if (pal.ground !== undefined) world.hemi.groundColor.set(pal.ground);
-    if (pal.sun !== undefined) world.sun.color.set(pal.sun);
-    if (pal.hemiI !== undefined) world.hemi.intensity = pal.hemiI;
-    if (pal.sunI !== undefined) world.sun.intensity = pal.sunI;
+    if (pal.sun !== undefined) world.sun.color.set(P(pal.sun, 0xffc87a));
+    if (pal.hemiI !== undefined) world.hemi.intensity = Math.max(0.1, pal.hemiI - a * 0.25);
+    if (pal.sunI !== undefined) world.sun.intensity = Math.max(0.1, pal.sunI - a * 0.35);
     if (pal.fogNear !== undefined) { scene.fog.near = pal.fogNear; scene.fog.far = pal.fogFar; }
   }
 }

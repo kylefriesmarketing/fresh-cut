@@ -331,7 +331,69 @@ export function discoveryMesh(kind) {
   return g;
 }
 
-// ---------------- mowers & trimmer ----------------
+// ---------------- mowers ----------------
+// The player looks at this object for the entire game, from about 1.2 m, and the top of the
+// deck sits dead centre of frame — so detail goes on TOP surfaces, not underneath.
+//
+// The contract with game.js is four fields and nothing else:
+//   userData.deckLocal      where the CUT lands, in +z local metres (must match the drawn deck)
+//   userData.bag            the group whose .scale is driven by the fill
+//   userData.bagLocal {y,z} the chute mouth, so in-flight clippings keep homing
+//   userData.wheel = radius on any mesh that should roll
+//
+// Seven machines, and they are meant to read as seven machines: Old Faithful is the tired
+// one, the Self-Propelled has a drive belt and a bail, the Wide-Deck is commercial kit with
+// two spindles, the Titan is a walk-behind the size of a door, the Hover has no wheels at
+// all, and the Tweezers is not really a mower.
+const MOWERS = {
+  push:  { w: 0.55, k: 1.00, drive: false, spindles: 1, handle: 'bar',    wear: 5, wheel: 0.090 },
+  self:  { w: 0.55, k: 1.00, drive: true,  spindles: 1, handle: 'bail',   wear: 1, wheel: 0.095 },
+  wide:  { w: 0.78, k: 1.12, drive: true,  spindles: 2, handle: 'brace',  wear: 2, wheel: 0.105 },
+  titan: { w: 2.20, k: 1.85, drive: true,  spindles: 3, handle: 'levers', wear: 0, wheel: 0.185 },
+};
+const RUSTS = [0x8f5b3a, 0x7d4a30, 0x9c6a45, 0x6f4a38];
+
+// A wheel that rolls: tyre, hub caps and tread blocks, the caps and blocks PARENTED to the
+// tyre so they turn with it. ⚠️ the tyre's own axis is its local +Y (it is laid over by
+// rotation.z), so a child's "across the wheel" direction is local y, not x.
+function roadWheel(g, x, z, r, wide = 0.06, hub = 0x9aa0a6) {
+  const t = new THREE.Mesh(new THREE.CylinderGeometry(r, r, wide, 12), mat(0x2c2c2c));
+  t.rotation.z = Math.PI / 2; t.position.set(x, r, z); t.userData.wheel = r; t.castShadow = true; g.add(t);
+  for (const sy of [-1, 1]) t.add(cyl(r * 0.5, r * 0.5, 0.012, hub, 0, sy * (wide / 2 + 0.006), 0, 8));
+  for (let i = 0; i < 6; i++) {
+    const a = i * 1.047;
+    const b = box(r * 0.4, wide * 0.86, 0.014, 0x232323, Math.cos(a) * r, 0, Math.sin(a) * r);
+    b.rotation.y = -(a + Math.PI / 2); t.add(b);
+  }
+  return t;
+}
+// the height-adjust lever every walk-behind has, one at each wheel: a notched quadrant
+// plate, a raked lever and the little knob you actually pull
+function heightLever(g, x, z, s, flip) {
+  const q = new THREE.Group(); q.position.set(x, 0.15 * s, z); q.rotation.y = flip ? Math.PI : 0;
+  q.add(box(0.018 * s, 0.13 * s, 0.10 * s, 0x8a8f94, 0, 0.02 * s, 0));            // quadrant plate
+  for (let i = 0; i < 4; i++) q.add(box(0.024 * s, 0.012 * s, 0.014 * s, 0x6f7479, 0, -0.02 * s + i * 0.03 * s, 0.05 * s));  // its notches
+  const arm = cyl(0.011 * s, 0.011 * s, 0.17 * s, 0x35383b, 0, 0.06 * s, 0.05 * s, 5);
+  arm.rotation.x = 0.75; q.add(arm);
+  q.add(sph(0.021 * s, 0xc9302c, 0, 0.11 * s, 0.115 * s, 6));                      // the knob
+  g.add(q);
+}
+// rust, chips and scuffs. Old Faithful gets five; the commercial kit gets a couple of honest
+// scrapes; the Titan is box-fresh, because the Petersons' shed is where new things go.
+function wearMarks(g, w, n, seed, y, side = 0) {
+  const rng = mulberry(seed);
+  for (let i = 0; i < n; i++) {
+    const x = (rng() - 0.5) * w * 0.86, z = (rng() - 0.5) * w * 0.62;
+    g.add(box(0.06 + rng() * 0.12, 0.010, 0.05 + rng() * 0.09, RUSTS[(rng() * 4) | 0], x, y, z));
+  }
+  // and the same again down the deck's SIDES, which is the face you actually walk behind
+  for (let i = 0; i < side; i++) {
+    const sx = rng() < 0.5 ? -1 : 1;
+    g.add(box(0.012, 0.05 + rng() * 0.05, 0.07 + rng() * 0.10, RUSTS[(rng() * 4) | 0],
+      sx * (w / 2 + 0.004), 0.15 + rng() * 0.07, (rng() - 0.5) * w * 0.6));
+  }
+}
+
 export function makeMower(gear, paint) {
   const g = new THREE.Group();
   // earned paint overrides the factory colour on the walk-behinds; the odd-size machines
@@ -339,11 +401,38 @@ export function makeMower(gear, paint) {
   const stock = { push: 0xc0392b, self: 0x3e7247, wide: 0xe8792c, rider: 0xc0392b, titan: 0x8e44ad, hover: 0x2f9fb5, tweezer: 0xd8a23f }[gear] || 0xc0392b;
   const deckC = (paint && ['push', 'self', 'wide', 'rider'].includes(gear)) ? paint : stock;
   const w = { push: 0.55, self: 0.55, wide: 0.78, rider: 1.15, titan: 2.2, hover: 0.95, tweezer: 0.22 }[gear] || 0.55;
+
   if (gear === 'rider') {
-    g.add(box(w * 0.8, 0.3, 1.5, deckC, 0, 0.42, 0.1));
-    g.add(box(w * 0.85, 0.16, 0.8, 0x2c2c2c, 0, 0.2, 0.35));
-    g.add(box(0.5, 0.4, 0.5, 0x333, 0, 0.75, -0.45)); // seat
-    const sw = new THREE.Mesh(new THREE.TorusGeometry(0.17, 0.03, 6, 14), mat(0x222)); sw.rotation.x = 1.1; sw.position.set(0, 0.85, 0.15); g.add(sw);
+    // ---- THE RIDER: a small tractor. You sit in it, so it needs a seat with a back you can
+    // see, a column under the wheel, a bonnet over the engine and a stack to breathe through.
+    g.add(box(w * 0.86, 0.14, 1.62, 0x3a3d40, 0, 0.34, 0.05));                 // chassis frame
+    g.add(box(w * 0.8, 0.30, 1.5, deckC, 0, 0.42, 0.1));                       // body tub
+    g.add(box(w * 0.85, 0.16, 0.8, 0x2c2c2c, 0, 0.2, 0.35));                   // the cutting deck
+    g.add(box(w * 0.88, 0.04, 0.84, 0x1f1f1f, 0, 0.115, 0.35));                // deck lip
+    for (const sx of [-w * 0.38, w * 0.38]) {                                  // anti-scalp rollers
+      const r = cyl(0.045, 0.045, 0.07, 0x4a4a4a, sx, 0.05, 0.72, 8);
+      r.rotation.z = Math.PI / 2; r.userData.wheel = 0.045; g.add(r);
+    }
+    const chute = box(0.2, 0.16, 0.3, deckC, w * 0.44, 0.24, 0.3); chute.rotation.z = -0.3; g.add(chute);
+    g.add(box(w * 0.62, 0.26, 0.5, deckC, 0, 0.66, 0.52));                     // bonnet
+    g.add(box(w * 0.58, 0.06, 0.04, 0xd8d2c4, 0, 0.66, 0.78));                 // grille
+    for (const sx of [-w * 0.22, w * 0.22]) {                                  // headlamps
+      const l = cyl(0.055, 0.055, 0.03, 0xf6efd2, sx, 0.74, 0.77, 10); l.rotation.x = Math.PI / 2; g.add(l);
+    }
+    g.add(cyl(0.035, 0.035, 0.30, 0x6f7479, w * 0.26, 0.94, 0.36, 8));         // exhaust stack
+    g.add(cyl(0.048, 0.042, 0.05, 0x4a4a4a, w * 0.26, 1.11, 0.36, 8));         // its rain cap
+    g.add(cyl(0.05, 0.05, 0.02, 0x1f1f1f, -w * 0.24, 0.81, 0.42, 8));          // fuel cap
+    const col = cyl(0.032, 0.036, 0.42, 0x4a4a4a, 0, 0.66, 0.2, 8); col.rotation.x = -0.42; g.add(col);
+    const sw = new THREE.Mesh(new THREE.TorusGeometry(0.17, 0.03, 6, 14), mat(0x222));
+    sw.rotation.x = 1.1; sw.position.set(0, 0.85, 0.15); g.add(sw);
+    const boss = cyl(0.05, 0.05, 0.02, 0x333, 0, 0.85, 0.152, 8); boss.rotation.x = 1.1; g.add(boss);
+    g.add(box(0.5, 0.08, 0.46, 0x333, 0, 0.7, -0.45));                         // seat pan
+    const back = box(0.5, 0.42, 0.09, 0x333, 0, 0.9, -0.66); back.rotation.x = 0.16; g.add(back);
+    g.add(box(0.54, 0.03, 0.5, 0x2a2a2a, 0, 0.655, -0.45));                    // seat frame
+    g.add(box(0.46, 0.04, 0.3, 0x3a3d40, 0, 0.34, 0.62));                      // footplate
+    const lift = cyl(0.016, 0.016, 0.34, 0x8a8f94, w * 0.3, 0.82, -0.28, 6); lift.rotation.x = -0.3; g.add(lift);
+    g.add(sph(0.03, 0xc9302c, w * 0.3, 0.98, -0.33, 7));                       // deck-lift knob
+    for (const sx of [-1, 1]) g.add(box(0.06, 0.20, 0.42, 0x3a3d40, sx * w * 0.44, 0.62, -0.42));  // fenders
     // rear catcher — same fill contract as the walk-behind bag (game drives .scale via userData.bag)
     const bagG = new THREE.Group(); bagG.position.set(0, 0.72, -0.82); g.add(bagG);
     const bin = new THREE.Mesh(new THREE.BoxGeometry(0.6, 0.32, 0.3), mat(0x565e42)); bin.position.set(0, -0.16, -0.02); bagG.add(bin);
@@ -352,55 +441,170 @@ export function makeMower(gear, paint) {
     g.userData.bagLocal = { y: 0.72, z: -0.82 }; // mouth, in mower-local space (+z forward)
     g.userData.deckLocal = 0.35;                 // the cutting deck's centre — the cut must land HERE
     for (const [x, z, r] of [[-w / 2 + 0.1, 0.75, 0.16], [w / 2 - 0.1, 0.75, 0.16], [-w / 2 + 0.05, -0.5, 0.24], [w / 2 - 0.05, -0.5, 0.24]]) {
-      const wh = new THREE.Mesh(new THREE.CylinderGeometry(r, r, 0.14, 12), mat(0x2c2c2c)); wh.rotation.z = Math.PI / 2; wh.position.set(x, r, z); wh.userData.wheel = r; g.add(wh);
+      roadWheel(g, x, z, r, r < 0.2 ? 0.12 : 0.18, 0xb0b6bb);
     }
+    wearMarks(g, w * 0.7, 1, 71, 0.575);
+
+  } else if (gear === 'hover') {
+    // ---- THE HOVER: no wheels, none, ever. A shell on a cushion of air, one pole, and it
+    // rides a few centimetres off the grass — the lift is baked into the geometry.
+    const R = w / 2, L = 0.07;
+    g.add(cyl(R * 0.98, R * 0.86, 0.09, 0x2b2b2b, 0, L + 0.05, 0, 20));        // the skirt
+    g.add(cyl(R, R * 0.99, 0.10, deckC, 0, L + 0.15, 0, 20));                  // the shell
+    g.add(cyl(R * 0.62, R * 0.66, 0.10, deckC, 0, L + 0.25, 0, 16));           // motor hump
+    g.add(cyl(R * 0.66, R * 0.66, 0.015, 0x1f1f1f, 0, L + 0.305, 0, 16));      // intake grille
+    for (let i = 0; i < 9; i++) {
+      const v = box(R * 0.5, 0.012, 0.022, 0x8a8f94, 0, L + 0.312, 0); v.rotation.y = i * 0.349; g.add(v);
+    }
+    g.add(cyl(R * 0.2, R * 0.2, 0.05, 0x9aa0a6, 0, L + 0.35, 0, 12));          // hub cap
+    g.add(box(R * 1.1, 0.02, 0.05, 0xe8e2d2, 0, L + 0.205, R * 0.72));         // badge band
+    const Py = L + 0.28, Pz = 0, Gy = 1.05, Gz = -0.8;
+    const ang = Math.atan2(Gz - Pz, Gy - Py), len = Math.hypot(Gy - Py, Gz - Pz);
+    const pole = cyl(0.021, 0.021, len, 0x8a8f94, 0, (Py + Gy) / 2, (Pz + Gz) / 2, 8); pole.rotation.x = ang; g.add(pole);
+    const flex = cyl(0.007, 0.007, len * 0.9, 0x2b2b2b, 0.026, (Py + Gy) / 2, (Pz + Gz) / 2 + 0.01, 4); flex.rotation.x = ang; g.add(flex);
+    const loop = new THREE.Mesh(new THREE.TorusGeometry(0.15, 0.022, 6, 16), mat(0x333));
+    loop.position.set(0, Gy - 0.02, Gz); loop.rotation.x = Math.PI / 2 + ang; g.add(loop);
+    g.add(box(0.06, 0.03, 0.014, 0x1f1f1f, 0.07, Gy - 0.06, Gz + 0.03));       // trigger
+    const bagG = new THREE.Group(); bagG.position.set(0, 0.5, -0.42); g.add(bagG);   // a pouch, not a box
+    const pouch = new THREE.Mesh(new THREE.SphereGeometry(0.17, 10, 8), mat(0x565e42));
+    pouch.scale.set(1, 0.8, 0.72); pouch.position.set(0, -0.14, 0); bagG.add(pouch);
+    bagG.add(cyl(0.15, 0.15, 0.02, 0x8a8f94, 0, 0, 0, 12));
+    g.userData.bag = bagG; g.userData.bagLocal = { y: 0.5, z: -0.42 };
+    g.userData.deckLocal = 0;
+
+  } else if (gear === 'tweezer') {
+    // ---- THE TWEEZERS: a 22 cm head on a battery wand. Gordon asked for the smallest thing
+    // you have, and he meant it.
+    const R = w / 2;
+    g.add(cyl(R, R * 0.94, 0.05, deckC, 0, 0.09, 0, 14));                      // head shroud
+    g.add(cyl(R * 0.96, R * 0.96, 0.010, 0x9aa0a6, 0, 0.055, 0, 14));          // the blade disc
+    for (let i = 0; i < 3; i++) { const b = box(R * 1.7, 0.006, 0.014, 0xd8d2c4, 0, 0.052, 0); b.rotation.y = i * 1.047; g.add(b); }
+    g.add(cyl(R * 0.34, R * 0.34, 0.04, 0x2b2b2b, 0, 0.13, 0, 10));            // motor can
+    g.add(box(0.05, 0.012, 0.03, 0xf2efd8, 0, 0.10, R * 0.9));                 // the little work light
+    const Ay = 0.13, Az = 0, Gy = 1.02, Gz = -0.66;
+    const ang = Math.atan2(Gz - Az, Gy - Ay), len = Math.hypot(Gy - Ay, Gz - Az);
+    const sh2 = cyl(0.014, 0.017, len, 0xb0b6bb, 0, (Ay + Gy) / 2, (Az + Gz) / 2, 7); sh2.rotation.x = ang; g.add(sh2);
+    const grip = box(0.055, 0.16, 0.07, 0x35383b, 0, Gy - 0.05, Gz - 0.02); grip.rotation.x = ang * 0.4; g.add(grip);
+    g.add(box(0.07, 0.09, 0.10, 0x2b2b2b, 0, Gy - 0.14, Gz - 0.06));           // battery pack
+    g.add(box(0.02, 0.012, 0.02, 0x4fd07a, 0.04, Gy - 0.12, Gz - 0.01));       // its charge light
+    const bagG = new THREE.Group(); bagG.position.set(0, 0.30, -0.2); g.add(bagG);
+    const cup = new THREE.Mesh(new THREE.CylinderGeometry(0.07, 0.055, 0.11, 10), mat(0x565e42));
+    cup.position.set(0, -0.06, 0); bagG.add(cup);
+    bagG.add(cyl(0.072, 0.072, 0.012, 0x8a8f94, 0, 0, 0, 10));
+    g.userData.bag = bagG; g.userData.bagLocal = { y: 0.30, z: -0.2 };
+    g.userData.deckLocal = 0;
+
   } else {
-    const deck = box(w, 0.16, w * 0.82, deckC, 0, 0.18, 0); g.add(deck);
-    g.add(box(w * 0.96, 0.07, w * 0.78, 0x2b2b2b, 0, 0.10, 0));            // the shadowed lip under the deck
-    // ---- the engine, which is the bit you look at ----
-    g.add(box(0.30, 0.10, 0.28, 0x3a3a3a, 0.06, 0.28, 0.04));              // engine deck plate
-    g.add(cyl(0.13, 0.15, 0.16, 0x2c2c2c, 0.08, 0.34, 0.05, 10));          // block
-    for (let i = 0; i < 4; i++) g.add(box(0.005, 0.09, 0.24, 0x4a4a4a, 0.02 + i * 0.03, 0.40, 0.05)); // cooling fins
-    g.add(cyl(0.045, 0.045, 0.1, 0x555, 0.08, 0.44, 0.05, 8));             // filler neck
-    g.add(cyl(0.05, 0.05, 0.02, 0x1f1f1f, 0.08, 0.50, 0.05, 8));           // fuel cap
-    g.add(box(0.13, 0.11, 0.13, 0xb8b3a8, -0.06, 0.36, 0.02));             // air filter housing
-    g.add(cyl(0.035, 0.035, 0.16, 0x8a8f94, 0.19, 0.30, 0.02, 8));         // muffler
-    g.add(cyl(0.022, 0.022, 0.06, 0x5f5f5f, 0.19, 0.30, -0.09, 6));        // exhaust tip
-    g.add(box(0.03, 0.05, 0.03, 0xd8d2c4, 0.02, 0.38, -0.09));             // spark plug cap
-    // pull-cord: the handle sits proud on its little bracket, cord running to the shroud
-    g.add(cyl(0.012, 0.012, 0.13, 0xe8e2d2, 0.20, 0.41, 0.10, 5));
-    const pull = cyl(0.018, 0.018, 0.09, 0x9c7a4f, 0.20, 0.48, 0.10, 6); pull.rotation.z = Math.PI / 2; g.add(pull);
-    // a maker's badge on the deck nose — every mower in the world has one
-    g.add(box(w * 0.34, 0.012, 0.07, 0xe8e2d2, 0, 0.27, w * 0.33));
-    // side discharge chute, angled out over the cut
-    const chute = box(0.16, 0.13, 0.22, deckC, w * 0.5, 0.20, -0.02);
-    chute.rotation.z = -0.35; g.add(chute);
-    g.add(box(0.17, 0.02, 0.23, 0x2b2b2b, w * 0.53, 0.15, -0.02));
-    for (const [x, z] of [[-w / 2 + 0.06, w * 0.33], [w / 2 - 0.06, w * 0.33], [-w / 2 + 0.06, -w * 0.33], [w / 2 - 0.06, -w * 0.33]]) {
-      const wh = new THREE.Mesh(new THREE.CylinderGeometry(0.09, 0.09, 0.06, 10), mat(0x2c2c2c)); wh.rotation.z = Math.PI / 2; wh.position.set(x, 0.09, z); wh.userData.wheel = 0.09; g.add(wh);
+    // ---- THE WALK-BEHINDS: one frame, four genuinely different machines on top of it ----
+    const S = MOWERS[gear] || MOWERS.push, k = S.k, d = w * 0.82;
+    g.add(box(w, 0.16, d, deckC, 0, 0.18, 0));                             // the deck
+    g.add(box(w * 0.96, 0.07, w * 0.78, 0x2b2b2b, 0, 0.10, 0));            // the shadowed lip under it
+    // ⚠️ NO full-width top plate here. A dark plate over the whole deck hid the paint, which
+    // is an earned reward — the machine read as one grey blob. Only a rim rail and the
+    // engine's own plate sit on top; the deck colour is the thing you see.
+    for (const sz of [d * 0.48, -d * 0.48]) g.add(box(w * 0.99, 0.035, 0.04, 0x1f1f1f, 0, 0.265, sz));
+    for (const sx of [-w * 0.49, w * 0.49]) g.add(box(0.04, 0.035, d * 0.99, 0x1f1f1f, sx, 0.265, 0));
+    for (let i = 0; i < S.spindles; i++) {                                 // one bump per blade — the Wide-Deck has two
+      const sx = S.spindles === 1 ? 0 : (i - (S.spindles - 1) / 2) * (w / S.spindles) * 0.9;
+      g.add(cyl(0.055 * k, 0.07 * k, 0.05 * k, 0x4a4a4a, sx, 0.28, -d * 0.12, 10));
     }
-    // handle: two tubes run LOW at the deck's rear edge UP to the grip bar in the player's hands
-    const Ay = 0.24, Az = -w * 0.41 + 0.02;   // attach point on the deck
-    const Gy = 1.05, Gz = -0.84;              // grip lands just under the camera (player pushes from ~0.86 back)
+    // ---- the engine, which is the bit you look at ----
+    const ex = 0.06 * k, ey = 0.26;
+    g.add(box(0.30 * k, 0.10, 0.28 * k, 0x3a3a3a, ex, ey + 0.02, 0.04));                        // engine deck plate
+    g.add(cyl(0.13 * k, 0.15 * k, 0.16 * k, 0x2c2c2c, ex + 0.02, ey + 0.08 * k, 0.05, 10));     // block
+    for (let i = 0; i < 4; i++) g.add(box(0.005, 0.09 * k, 0.24 * k, 0x4a4a4a, ex - 0.04 + i * 0.03 * k, ey + 0.14 * k, 0.05)); // cooling fins
+    g.add(cyl(0.045 * k, 0.045 * k, 0.1 * k, 0x555, ex + 0.02, ey + 0.18 * k, 0.05, 8));        // filler neck
+    g.add(cyl(0.05 * k, 0.05 * k, 0.02, 0x1f1f1f, ex + 0.02, ey + 0.24 * k, 0.05, 8));          // fuel cap
+    g.add(box(0.13 * k, 0.11 * k, 0.13 * k, 0xb8b3a8, ex - 0.12 * k, ey + 0.10 * k, 0.02));     // air filter housing
+    const muff = cyl(0.035 * k, 0.035 * k, 0.16 * k, 0x8a8f94, ex + 0.13 * k, ey + 0.04, 0.02, 8);
+    if (S.wear > 3) muff.rotation.z = 0.18;                                                     // Old Faithful's is bent
+    g.add(muff);
+    g.add(cyl(0.022 * k, 0.022 * k, 0.06 * k, 0x5f5f5f, ex + 0.13 * k, ey + 0.04, -0.09, 6));   // exhaust tip
+    g.add(box(0.03, 0.05, 0.03, 0xd8d2c4, ex - 0.04, ey + 0.12 * k, -0.09));                    // spark plug cap
+    // pull-cord: the handle sits proud on its little bracket, cord running to the shroud
+    g.add(cyl(0.012, 0.012, 0.13 * k, 0xe8e2d2, ex + 0.14 * k, ey + 0.15 * k, 0.10, 5));
+    const pull = cyl(0.018, 0.018, 0.09 * k, 0x9c7a4f, ex + 0.14 * k, ey + 0.22 * k, 0.10, 6); pull.rotation.z = Math.PI / 2; g.add(pull);
+    // a maker's badge on the deck nose — every mower in the world has one, and this one's faded
+    g.add(box(Math.min(w * 0.34, 0.30), 0.012, 0.07, S.wear > 3 ? 0xbdb6a4 : 0xe8e2d2, 0, 0.27, d * 0.4));
+    // side discharge chute, angled out over the cut
+    const chute = box(0.16 * k, 0.13 * k, 0.22 * k, deckC, w * 0.5, 0.20, -0.02);
+    chute.rotation.z = -0.35; g.add(chute);
+    g.add(box(0.17 * k, 0.02, 0.23 * k, 0x2b2b2b, w * 0.53, 0.15, -0.02));
+    // wheels: drive machines run bigger rears, and every wheel gets its height-adjust lever
+    const fr = S.wheel, rr = S.drive ? S.wheel * 1.35 : S.wheel;
+    for (const [x, z, r] of [[-w / 2 + 0.06 * k, d * 0.4, fr], [w / 2 - 0.06 * k, d * 0.4, fr],
+                             [-w / 2 + 0.06 * k, -d * 0.4, rr], [w / 2 - 0.06 * k, -d * 0.4, rr]]) {
+      roadWheel(g, x, z, r, 0.055 * k);
+      // ⚠️ OUTBOARD of the deck, on the wheel bracket. Tucked inboard they sat INSIDE the
+      // deck box and all you ever saw was the red knob poking through the paint.
+      heightLever(g, x + Math.sign(x) * 0.075 * k, z * 0.74, k, x < 0);
+    }
+    if (S.drive) {   // the belt cover along the deck TOP, and the transmission it runs into
+      g.add(box(0.11 * k, 0.055, d * 0.55, 0x35383b, -w * 0.2, 0.29, -d * 0.16));
+      g.add(box(0.13 * k, 0.03, 0.10 * k, 0x8a8f94, -w * 0.2, 0.32, -d * 0.40));
+      g.add(box(w * 0.46, 0.10 * k, 0.12 * k, 0x35383b, -w * 0.02, 0.19, -d * 0.44));    // the axle housing
+      const pul = cyl(rr * 0.55, rr * 0.55, 0.02, 0x4a4a4a, -w / 2 + 0.12 * k, rr, -d * 0.4, 10);
+      pul.rotation.z = Math.PI / 2; g.add(pul);
+    }
+    // ---- the handle: two tubes from the deck's rear edge up to the grip in your hands ----
+    const Ay = 0.24, Az = -d * 0.5 + 0.02;
+    const Gy = 1.05, Gz = -0.84;
     const hang = Math.atan2(Gz - Az, Gy - Ay);
     const hl = Math.hypot(Gy - Ay, Gz - Az);
-    for (const sx of [-0.17, 0.17]) { const h = cyl(0.018, 0.018, hl, 0x8a8f94, sx, (Ay + Gy) / 2, (Az + Gz) / 2, 6); h.rotation.x = hang; g.add(h); }
-    const grip = cyl(0.026, 0.026, 0.46, 0x333, 0, Gy, Gz, 8); grip.rotation.z = Math.PI / 2; g.add(grip);
-    const cross = cyl(0.014, 0.014, 0.34, 0x8a8f94, 0, Ay + (Gy - Ay) * 0.38, Az + (Gz - Az) * 0.38, 6); cross.rotation.z = Math.PI / 2; g.add(cross);
+    const hw = S.handle === 'levers' ? 0.34 : 0.17;
+    for (const sx of [-hw, hw]) { const h = cyl(0.018 * k, 0.018 * k, hl, 0x8a8f94, sx, (Ay + Gy) / 2, (Az + Gz) / 2, 6); h.rotation.x = hang; g.add(h); }
+    // throttle cable: off the engine, clipped up the right tube, to the lever under the grip
+    const cab = cyl(0.006, 0.006, hl * 0.92, 0x2b2b2b, hw + 0.022, (Ay + Gy) / 2 + 0.02, (Az + Gz) / 2 + 0.012, 4);
+    cab.rotation.x = hang; g.add(cab);
+    const drop = cyl(0.006, 0.006, 0.30, 0x2b2b2b, ex + 0.10 * k, ey + 0.10, -0.16, 4);
+    drop.rotation.set(-0.8, 0, -0.5); g.add(drop);
+    for (const t of [0.34, 0.68]) g.add(box(0.026, 0.013, 0.013, 0x1f1f1f, hw + 0.012, Ay + (Gy - Ay) * t + 0.02, Az + (Gz - Az) * t + 0.006));
+    g.add(box(0.06, 0.022, 0.014, 0x1f1f1f, hw - 0.06, Gy - 0.03, Gz + 0.05));   // the throttle lever itself
+    if (S.handle === 'levers') {
+      // the Titan is steered on two drive levers, not pushed on a bar
+      for (const sx of [-hw, hw]) {
+        const lv = cyl(0.016, 0.016, 0.30, 0x35383b, sx, Gy - 0.06, Gz + 0.06, 6); lv.rotation.x = -0.5; g.add(lv);
+        g.add(box(0.07, 0.05, 0.14, 0x222, sx, Gy + 0.06, Gz - 0.04));
+      }
+      g.add(box(0.30, 0.10, 0.05, 0x3a3d40, 0, Gy - 0.02, Gz + 0.02));           // control panel between them
+      g.add(cyl(0.02, 0.02, 0.02, 0xc9302c, -0.07, Gy + 0.04, Gz + 0.02, 8));    // kill switch
+      g.add(cyl(0.02, 0.02, 0.02, 0x4fd07a, 0.07, Gy + 0.04, Gz + 0.02, 8));
+    } else {
+      const grip = cyl(0.026, 0.026, hw * 2.7, 0x333, 0, Gy, Gz, 8); grip.rotation.z = Math.PI / 2; g.add(grip);
+      if (S.wear > 3) for (const sx of [-0.13, 0.13]) {                           // Old Faithful's taped grip
+        const tp = cyl(0.030, 0.030, 0.07, 0x2b2b2b, sx, Gy, Gz, 8); tp.rotation.z = Math.PI / 2; g.add(tp);
+      }
+      const cross = cyl(0.014 * k, 0.014 * k, hw * 2, 0x8a8f94, 0, Ay + (Gy - Ay) * 0.38, Az + (Gz - Az) * 0.38, 6); cross.rotation.z = Math.PI / 2; g.add(cross);
+      if (S.handle === 'brace') {   // commercial kit: a second brace and rubber hand pads
+        const c2 = cyl(0.013 * k, 0.013 * k, hw * 2, 0x8a8f94, 0, Ay + (Gy - Ay) * 0.68, Az + (Gz - Az) * 0.68, 6); c2.rotation.z = Math.PI / 2; g.add(c2);
+        for (const sx of [-0.2, 0.2]) { const p = cyl(0.032, 0.032, 0.13, 0x1f1f1f, sx, Gy, Gz, 8); p.rotation.z = Math.PI / 2; g.add(p); }
+      }
+      if (S.handle === 'bail') {    // the self-propelled's drive bail, hooped over the grip
+        const b = new THREE.Mesh(new THREE.TorusGeometry(0.2, 0.012, 5, 14, Math.PI), mat(0x35383b));
+        b.position.set(0, Gy + 0.02, Gz + 0.09); b.rotation.set(-1.2, 0, 0); g.add(b);
+      }
+    }
     // rear grass bag — hangs from the tubes behind the deck; the game inflates it as it fills
     const bagG = new THREE.Group(); bagG.position.set(0, 0.62, (Az + Gz) / 2 + 0.02); g.add(bagG);
-    const cloth = new THREE.Mesh(new THREE.BoxGeometry(0.34, 0.36, 0.30), mat(0x565e42)); cloth.position.set(0, -0.20, 0.02); cloth.rotation.x = hang * 0.4; bagG.add(cloth);
-    const rim = box(0.37, 0.028, 0.32, 0x8a8f94, 0, 0, 0.02); rim.rotation.x = hang * 0.4; bagG.add(rim);
+    const bagW = Math.min(0.80, 0.34 * (0.6 + w * 0.9));
+    const cloth = new THREE.Mesh(new THREE.BoxGeometry(bagW, 0.36, 0.30), mat(0x565e42)); cloth.position.set(0, -0.20, 0.02); cloth.rotation.x = hang * 0.4; bagG.add(cloth);
+    const rim = box(bagW + 0.03, 0.028, 0.32, 0x8a8f94, 0, 0, 0.02); rim.rotation.x = hang * 0.4; bagG.add(rim);
+    bagG.add(box(bagW * 0.5, 0.02, 0.03, 0x8a8f94, 0, -0.30, 0.16));            // the bag's carry strap
+    // the duct from the deck's rear opening up into the bag mouth — without it the bag
+    // reads as a box floating behind the machine
+    const duct = box(bagW * 0.6, 0.13, 0.30, 0x2f3330, 0, 0.34, Az - 0.1);
+    duct.rotation.x = -0.6; g.add(duct);
     g.userData.bag = bagG;
     g.userData.bagLocal = { y: 0.62, z: (Az + Gz) / 2 + 0.02 }; // mouth, in mower-local space (+z forward)
     g.userData.deckLocal = 0;                                   // deck box sits at the group origin
-    if (gear === 'push') { // Old Faithful's dents & rust patch
-      g.add(box(0.12, 0.02, 0.1, 0x8f5b3a, -0.12, 0.27, 0.12));
+    wearMarks(g, w, S.wear, 1957, 0.272, S.wear);
+    if (S.wear > 3) {                                           // and the dent Pop never hammered out
+      const dent = box(0.12, 0.05, 0.16, 0x8f2f26, -w * 0.46, 0.19, d * 0.2); dent.rotation.z = 0.25; g.add(dent);
     }
   }
   // soft contact shadow — polygonOffset, never a raised Y (it depth-fails on real ground)
   const sh = new THREE.Mesh(new THREE.CircleGeometry(w * 0.72, 18),
-    new THREE.MeshBasicMaterial({ color: 0x000000, transparent: true, opacity: 0.28, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -4, polygonOffsetUnits: -4 }));
+    new THREE.MeshBasicMaterial({ color: 0x000000, transparent: true, opacity: gear === 'hover' ? 0.16 : 0.28, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -4, polygonOffsetUnits: -4 }));
   sh.rotation.x = -Math.PI / 2; sh.position.y = 0.01; g.add(sh);
   g.traverse(m => { if (m.isMesh && m !== sh) m.castShadow = true; });
   return g;
