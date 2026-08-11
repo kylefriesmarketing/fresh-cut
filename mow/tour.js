@@ -55,12 +55,15 @@ export const TOUR = [
       { k: 'mound', x: 17, z: 12, r: 12, h: -0.5 },
     ] },
     tiers: [{ t: 'base', tier: 2 }, { t: 'rect', x: 0, z: 0, w: 34, h: 7, tier: 3 }, { t: 'rect', x: 0, z: 17, w: 34, h: 7, tier: 3 }],
-    // the dirt oval itself: two straights and two turns, laid ON the banking
+    // The dirt oval. ⚠️ First pass put it at z 1.5 / 19.1 — the OUTER face of the banking,
+    // which from a camera down in the infield sits over the crest and cannot be seen at all.
+    // It belongs on the INNER face, rising away from the infield, which is both what a real
+    // banked oval looks like and the only place you can actually see it from.
     paths: [
-      { x: 1.5, z: 1.5, w: 31, h: 3.4, c: '#8c6a4a' },
-      { x: 1.5, z: 19.1, w: 31, h: 3.4, c: '#8c6a4a' },
-      { x: 1.5, z: 1.5, w: 3.4, h: 21, c: '#8c6a4a' },
-      { x: 29.1, z: 1.5, w: 3.4, h: 21, c: '#8c6a4a' },
+      { x: 3.0, z: 4.2, w: 28, h: 4.6, c: '#7a5638' },
+      { x: 3.0, z: 15.2, w: 28, h: 4.6, c: '#7a5638' },
+      { x: 3.0, z: 4.2, w: 4.6, h: 15.6, c: '#7a5638' },
+      { x: 26.4, z: 4.2, w: 4.6, h: 15.6, c: '#7a5638' },
     ],
     props: [
       { k: 'bleacher', x: 8, z: 2.2, o: { w: 7, rows: 5 } }, { k: 'bleacher', x: 24, z: 2.2, o: { w: 7, rows: 5 } },

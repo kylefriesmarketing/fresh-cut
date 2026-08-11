@@ -138,12 +138,20 @@ function bestGear(unlocked, def) {
 }
 
 // ---------- postcard / complete ----------
-let pcBefore = null, pcAfter = null, pcDef = null;
+let pcBefore = null, pcAfter = null, pcDef = null, pcPattern = null;
 export function renderComplete(def, stats, beforeImg, afterImg, replyText, onNext) {
-  pcBefore = beforeImg; pcAfter = afterImg; pcDef = def;
+  pcBefore = beforeImg; pcAfter = afterImg; pcDef = def; pcPattern = stats.pattern || null;
   $('comp-title').textContent = def.finale ? 'Last page.' : def.daily ? 'Today’s page, inked.' : 'Fresh Cut.';
   const mins = Math.floor(stats.time / 60), secs = Math.floor(stats.time % 60);
-  $('comp-stats').textContent = `${mins}m ${String(secs).padStart(2, '0')}s on the clock · ${Math.round(stats.dist)} m walked · ${stats.found}/${stats.totalDisc} things found in the grass`;
+  let line = `${mins}m ${String(secs).padStart(2, '0')}s on the clock · ${Math.round(stats.dist)} m walked · ${stats.found}/${stats.totalDisc} things found in the grass`;
+  // pattern maps earn a line of their own on the card. Praise only — a low number still
+  // reads as a finished job, because it is one.
+  if (stats.pattern) {
+    const s = stats.pattern.score;
+    const badge = s >= 88 ? 'championship stripes' : s >= 72 ? 'proper bands' : s >= 55 ? 'stripes, in the right light' : 'cut clean';
+    line += ` · pattern ${s}/100 — ${badge}`;
+  }
+  $('comp-stats').textContent = line;
   const reply = $('comp-reply'); reply.innerHTML = '';
   if (replyText) {
     const d = document.createElement('div'); d.className = 'sms'; d.style.textAlign = 'left';
@@ -179,6 +187,19 @@ function drawPostcard(split) {
   x.fillText(pcDef.name + ' — Hazel Park', 20, H - 24);
   x.font = 'bold 20px Georgia'; x.textAlign = 'right'; x.fillStyle = '#e8b04b';
   x.fillText(pcDef.id === 'terrarium' ? 'RETURN TO SENDER ♥' : 'FRESH CUT', W - 20, H - 24);
+  // pattern maps get a stamp in the corner of the keepsake itself, not just the screen
+  if (pcPattern) {
+    const s = pcPattern.score, r = 40, cx2 = W - 64, cy2 = 62;
+    x.save();
+    x.globalAlpha = 0.92;
+    x.beginPath(); x.arc(cx2, cy2, r, 0, 6.283);
+    x.fillStyle = 'rgba(24,30,18,0.66)'; x.fill();
+    x.lineWidth = 3; x.strokeStyle = s >= 88 ? '#e8b04b' : s >= 72 ? '#cfd8c0' : '#a9a396'; x.stroke();
+    x.textAlign = 'center'; x.fillStyle = '#f2ead2';
+    x.font = 'bold 28px Georgia'; x.fillText(String(s), cx2, cy2 + 4);
+    x.font = 'italic 13px Georgia'; x.fillText('pattern', cx2, cy2 + 22);
+    x.restore();
+  }
 }
 function savePostcard() {
   const a = document.createElement('a');
