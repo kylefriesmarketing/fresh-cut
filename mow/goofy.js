@@ -13,7 +13,7 @@ export const GOOFY = [
     id: 'enlarged', block: 6, goofy: true, name: 'Six Hillcrest (Enlarged)', client: 'The Petersons', who: 'DENISE P.', gearLock: 'titan',
     blurb: "An ordinary front lawn. The Petersons are very clear about this. It is an ordinary front lawn and they would appreciate it if you did not make a thing of it. The daisies are four metres tall. It is an ordinary front lawn.",
     pop: 'ordinary, they insist',
-    lot: { w: 36, h: 26 }, seed: 701, fence: 'picket', gate: { x: 17, w: 2.4 }, hood: 'parkland',
+    lot: { w: 36, h: 26 }, seed: 701, fence: 'picket', gate: { x: 17, w: 2.4 }, hood: 'giant',
     terrain: { features: [{ k: 'mound', x: 18, z: 13, r: 15, h: 1.1 }] },
     tiers: [{ t: 'base', tier: 3 }, { t: 'rect', x: 10, z: 9, w: 16, h: 9, tier: 4 }],
     props: [
@@ -39,7 +39,7 @@ export const GOOFY = [
     id: 'shag', block: 6, goofy: true, name: 'The Shag Carpet, 1974', client: 'Estate of H. Brill', who: 'THE EXECUTOR', gearLock: 'hover',
     blurb: "Mr Brill installed avocado shag throughout the sunken lounge in 1974 and it has not been cut since. The executor is selling the house. The estate agent used the word 'meadow.' The estate agent was not being poetic.",
     pop: "the agent said 'meadow'",
-    lot: { w: 24, h: 18 }, seed: 702, light: 'weird', fence: 'none', gate: { x: 2, w: 2.0 }, hood: 'city',
+    lot: { w: 24, h: 18 }, seed: 702, light: 'weird', fence: 'none', gate: { x: 2, w: 2.0 }, hood: 'indoor',
     terrain: { features: [{ k: 'bowl', x: 12, z: 9, r: 8, h: 1.2 }] },
     tiers: [{ t: 'base', tier: 4 }, { t: 'rect', x: 8, z: 6, w: 8, h: 6, tier: 3 }],
     props: [
@@ -64,7 +64,7 @@ export const GOOFY = [
     id: 'model', block: 6, goofy: true, name: 'The Model Railway Club', client: 'Hazel Park & District MRC', who: 'GORDON', gearLock: 'tweezer',
     blurb: "Forty years of work: a whole town in miniature, laid out on trestles, with real grass because Gordon insists real grass is the only thing that reads as grass. It is now nine inches tall. The village of Little Comberton is somewhere under there.",
     pop: 'Little Comberton is under there',
-    lot: { w: 20, h: 14 }, seed: 703, fence: 'rail', gate: { x: 9.5, w: 1.4 }, hood: 'parkland',
+    lot: { w: 20, h: 14 }, seed: 703, fence: 'rail', gate: { x: 9.5, w: 1.4 }, hood: 'indoor',
     terrain: { features: [{ k: 'mound', x: 6, z: 7, r: 4.5, h: 0.9 }, { k: 'ridge', x1: 0, z1: 10, x2: 20, z2: 10, w: 1.6, h: 0.5 }] },
     tiers: [{ t: 'base', tier: 3 }],
     props: [
@@ -142,7 +142,7 @@ export const GOOFY = [
     id: 'felt', block: 6, goofy: true, name: 'The Felt', client: 'Riverside Social Club', who: 'BARRY', gearLock: 'hover',
     blurb: "The club's championship table was left under a leaking skylight for a winter. Something took. Barry describes what is now growing on the felt as 'a difficult green' and has asked you not to say anything to the league.",
     pop: "don't tell the league",
-    lot: { w: 26, h: 14 }, seed: 706, fence: 'rail', gate: { x: 12.5, w: 1.4 }, hood: 'city',
+    lot: { w: 26, h: 14 }, seed: 706, fence: 'rail', gate: { x: 12.5, w: 1.4 }, hood: 'indoor',
     terrain: { features: [{ k: 'slope', ang: 1.571, h: 0.5 }, { k: 'bowl', x: 13, z: 7, r: 9, h: 0.35 }] },
     tiers: [{ t: 'base', tier: 3 }],
     props: [
@@ -168,7 +168,7 @@ export const GOOFY = [
     id: 'doormat', block: 6, goofy: true, name: 'The Welcome Mat', client: '—', who: '—', gearLock: 'titan',
     blurb: "There is a house at the end of the lane with a doormat forty metres across. Nobody has ever seen who lives there. The mat has gone to seed. An envelope of cash arrives every spring and the note says the same three words it has said for eleven years: PLEASE AND THANK YOU.",
     pop: 'please and thank you',
-    lot: { w: 40, h: 20 }, seed: 707, light: 'dusk', fence: 'none', gate: { x: 19, w: 3 }, hood: 'openfield',
+    lot: { w: 40, h: 20 }, seed: 707, light: 'dusk', fence: 'none', gate: { x: 19, w: 3 }, hood: 'giant',
     terrain: { features: [{ k: 'ridge', x1: 0, z1: 3, x2: 40, z2: 3, w: 3, h: 0.8 }, { k: 'ridge', x1: 0, z1: 17, x2: 40, z2: 17, w: 3, h: 0.8 }, { k: 'mound', x: 20, z: 10, r: 18, h: 0.5 }] },
     tiers: [{ t: 'base', tier: 4 }, { t: 'rect', x: 6, z: 6, w: 28, h: 8, tier: 3 }],
     props: [
@@ -220,7 +220,7 @@ export const GOOFY = [
     id: 'windowsill', block: 6, goofy: true, name: 'The Windowsill', client: 'Apartment 4B', who: 'THEO', gearLock: 'tweezer',
     blurb: "Theo grows wheatgrass in a tray on his kitchen windowsill. The tray is ninety centimetres long. Theo has booked a full lawn service. Theo is entirely serious and has already paid, and when you arrive the ladder is out and the window is open.",
     pop: 'he has already paid',
-    lot: { w: 18, h: 10 }, seed: 709, fence: 'rail', gate: { x: 8.5, w: 1.2 }, hood: 'city',
+    lot: { w: 18, h: 10 }, seed: 709, fence: 'rail', gate: { x: 8.5, w: 1.2 }, hood: 'indoor',
     terrain: { features: [{ k: 'ridge', x1: 0, z1: 1.6, x2: 18, z2: 1.6, w: 1.8, h: 0.7 }, { k: 'ridge', x1: 0, z1: 8.4, x2: 18, z2: 8.4, w: 1.8, h: 0.7 }] },
     tiers: [{ t: 'base', tier: 4 }],
     props: [

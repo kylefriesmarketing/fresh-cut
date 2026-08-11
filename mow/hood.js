@@ -61,6 +61,19 @@ export const HOODS = {
     body: [0xa89684, 0x8f8378, 0xb3a493, 0x7d7268], roof: [0x585349], rise: 0.3, w: [9, 16], h: [10, 22],
     tree: 'sparse', treeN: 0.1, hedge: 0, far: ['towers'], spacing: 14, ringDens: 1.5, ringNear: 40, flat: true,
   },
+  // ---- The Odd Sizes need backdrops that sell the SCALE joke ----
+  indoor: {    // you are inside: a lounge, a club room, a model railway hall. No sky at all.
+    residential: false, indoor: true, wallH: 9, wallC: 0xc9bda8, ceilC: 0xe4ddc9, skirtC: 0x8a7a63,
+    body: [0xc9bda8], roof: [0x6a6258], rise: 0.3, w: [6, 8], h: [3, 4],
+    tree: 'sparse', treeN: 0, hedge: 0, far: [], spacing: 20,
+  },
+  giant: {     // an ordinary street, except everything on it is enormous
+    residential: false,
+    body: [0xd8cbb4, 0xc9d4dd, 0xd4c2c2, 0xcfd8c0], roof: [0x6b5844, 0x574c46],
+    rise: 9, w: [30, 52], h: [20, 34],
+    tree: 'tall', treeN: 1, hedge: 0, far: ['roofs', 'trees'], spacing: 40,
+    ringDens: 0.75, ringNear: 54, ringTreeScale: 9,
+  },
   orchardland: { // more orchard, in every direction
     residential: false,
     body: [0xe2dccb], roof: [0x7a4a3c], rise: 1.8, w: [6, 8], h: [3, 4],
@@ -158,6 +171,24 @@ export function buildHood(scene, def, world, quality) {
     brighten(g, k); root.add(g); return g;
   };
 
+  // ---- indoors: four walls and a ceiling, and nothing else. A sunken lounge does not
+  // have a horizon, and leaving one there was what made the shag carpet read as a field. ----
+  if (P.indoor) {
+    const wh = P.wallH || 9, m = 3.5;
+    const room = new THREE.Group();
+    room.add(box(W + m * 2, wh, 0.7, P.wallC, cx, wh / 2, -m));
+    room.add(box(W + m * 2, wh, 0.7, P.wallC, cx, wh / 2, H + m));
+    room.add(box(0.7, wh, H + m * 2, P.wallC, -m, wh / 2, cz));
+    room.add(box(0.7, wh, H + m * 2, P.wallC, W + m, wh / 2, cz));
+    for (const [bx, bz, bw, bd] of [[cx, -m + 0.4, W + m * 2, 0.3], [cx, H + m - 0.4, W + m * 2, 0.3]])
+      room.add(box(bw, 0.5, bd, P.skirtC, bx, 0.25, bz));
+    const ceil = new THREE.Mesh(new THREE.PlaneGeometry(W + m * 2, H + m * 2), mat(P.ceilC));
+    ceil.rotation.x = Math.PI / 2; ceil.position.set(cx, wh, cz); room.add(ceil);
+    room.traverse(o => { if (o.isMesh) o.castShadow = false; });
+    brighten(room, 0.34); root.add(room);
+    return { group: root, hood: P };     // no ring, no landmarks, no sky business
+  }
+
   // ---- the neighbours either side of you, fronts to the street like yours ----
   if (P.residential !== false) for (const sign of [-1, 1]) {
     const edge = sign < 0 ? -3.5 : W + 3.5;
@@ -250,7 +281,7 @@ export function buildHood(scene, def, world, quality) {
       continue;
     }
     if (P.far.includes('trees') && kind < 0.55) {
-      const t = treeOf(P.tree, rng, 2.0 + rng() * 1.6);
+      const t = treeOf(P.tree, rng, (P.ringTreeScale || 2.0) + rng() * 1.6);
       t.position.set(x, 0, z); ring.add(t);
     } else if (P.far.includes('roofs') || P.far.includes('block')) {
       const g = new THREE.Group();
