@@ -62,14 +62,14 @@ export function flash() {
 // ---------- notebook ----------
 export function renderNotebook(save, onPick) {
   const jobsEl = $('nb-jobs');
-  const campaign = JOBS.filter(j => !j.odd && !j.tour);
+  const campaign = JOBS.filter(j => !j.odd && !j.tour && !j.goofy);
   const doneCount = campaign.filter(j => save.done[j.id]).length;
   const finaleDone = !!save.done['pops'];
   $('nb-progress').textContent = `${doneCount} of ${campaign.length} pages inked${finaleDone ? ' — and the weird calls' : ''}`;
   let html = '';
   let prevDone = true;
   for (let b = 0; b < BLOCKS.length; b++) {
-    const blockJobs = JOBS.filter(j => (j.block === b && !(b === 4 && j.tour)) || (b === 4 && j.odd && !j.tour));
+    const blockJobs = JOBS.filter(j => (j.block === b && !(b === 4 && (j.tour || j.goofy))) || (b === 4 && j.odd && !j.tour && !j.goofy));
     if (!blockJobs.length) continue;
     if (b === 4 && !finaleDone) { html += `<div class="blockhead">— a few pages are stuck together —</div>`; continue; }
     html += `<div class="blockhead">${BLOCKS[b].name} · <span style="font-weight:normal;letter-spacing:0;text-transform:none;color:#8a7c62">${BLOCKS[b].sub}</span></div>`;
@@ -78,7 +78,7 @@ export function renderNotebook(save, onPick) {
     for (const j of blockJobs) {
       const done = save.done[j.id];
       const locked = b < 4 ? !prevDone : false;
-      const st = done ? '✓' : locked ? '🔒' : (j.tour ? '◈' : j.odd ? '☎' : '▢');
+      const st = done ? '✓' : locked ? '🔒' : (j.goofy ? '◇' : j.tour ? '◈' : j.odd ? '☎' : '▢');
       const missedKeep = done && j.disc?.some(d => d.tier === 'keep') && !done.keeps;
       html += `<div class="jobrow ${locked ? 'locked' : ''}" data-id="${j.id}">
         <div class="st" style="${done ? 'color:#c0392b' : ''}">${st}</div>

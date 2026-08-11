@@ -16,6 +16,10 @@ export const GEARS = {
   self:  { name: 'The Self-Propelled', swath: 0.55, speed: 1.75, walk: 2.3, cam: 1.62, bob: 0.85 },
   wide:  { name: 'The Wide-Deck',     swath: 0.78, speed: 1.55, walk: 2.3, cam: 1.62, bob: 1.1 },
   rider: { name: 'The Rider',         swath: 1.15, speed: 2.45, walk: 2.45, cam: 1.98, bob: 0.35 },
+  // ---- gear that only comes out for The Odd Sizes ----
+  titan:  { name: 'The Titan',        swath: 2.20, speed: 1.05, walk: 2.1, cam: 1.62, bob: 1.60 },
+  hover:  { name: 'The Hover',        swath: 0.95, speed: 2.10, walk: 2.3, cam: 1.62, bob: 0.10 },
+  tweezer:{ name: 'The Tweezers',     swath: 0.20, speed: 1.85, walk: 2.3, cam: 1.62, bob: 0.55 },
 };
 
 export class Game {
