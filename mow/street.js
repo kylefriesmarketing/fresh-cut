@@ -208,7 +208,11 @@ export function buildStreet(scene, def, world, quality) {
   // A reservoir bank, a speedway and a roof six floors up do not have a residential street
   // out front. Those maps declare a non-residential backdrop, and this whole layer — houses,
   // road markings, parked cars, traffic, pedestrians — sits out.
-  const NON_RESIDENTIAL = ['parkland', 'openfield', 'water', 'city', 'orchardland'];
+  // ⚠️ 'indoor' belongs here too, and was missing: the four indoor maps were each building
+  // five neighbour houses, driveways, parked cars, pedestrians and a live traffic pool
+  // behind the north wall — visible through the window, and ticked every frame for nothing.
+  // The same literal list lives in props.js; change both together.
+  const NON_RESIDENTIAL = ['parkland', 'openfield', 'water', 'city', 'orchardland', 'indoor'];
   const noStreet = NON_RESIDENTIAL.includes(def.hood);
   const quiet = !!def.finale || def.street === false || noStreet;
   const gapRange = (def.street === false || noStreet) ? null : quiet ? [30, 55] : night ? [13, 26] : [5.5, 11.5];

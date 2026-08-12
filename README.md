@@ -25,6 +25,38 @@ Deploy = copy the whole folder to any static host (GitHub Pages works as-is).
 4. The indoor rooms have furniture against the walls now, but nothing on the **ceiling** other
    than the light, and no rug/threshold where the carpet meets the skirting. Small stuff.
 
+## v1.32 (2026-08-12) — 🐛 there was a road, a pavement and five houses inside the lounge
+
+Small room detail, which turned up a real bug on the way in.
+
+**`'indoor'` was missing from the NON_RESIDENTIAL list in BOTH `props.js` and `street.js`.**
+So each of the four indoor maps was being given the full outdoor surround: a tarmac road, a
+**1.6 m pavement running across the room** between the carpet and the north wall, centre-line
+dashes, five neighbour houses with driveways and mailboxes, parked cars, pedestrians and a
+live traffic pool — the last of which was also being ticked every frame for scenery nobody
+could see. Measured on the shag lounge: road 1, pavement 1, street layer **340 meshes → 10**.
+- The remaining 10 are the bird flock, and they are fine: `visible = false` until they fly,
+  and they fly at y 26+ and z −40, which is sky seen through the window. Checked, not assumed.
+- ⚠️ The two literal lists must be changed together. They are deliberately not imported from
+  hood.js (that would make props ↔ hood circular), so nothing enforces it.
+
+**The floor is a floor now.** The surround aprons were grass-green under the furniture and up
+to the skirting, so the carpet appeared to run on for ever and the room read as a lawn with
+walls round it. Indoors they take `def.room.floor`: dark boards in the lounge, grey screed in
+the club hall, worn parquet in the social club, pale lino in the kitchen — with a **threshold
+strip** round the lot edge so the carpet visibly ends. Measured: lawn rgb(186,206,147),
+threshold rgb(90,96,41), floor rgb(80,39,7).
+- ⚠️ I read the first shot as "the floor is still green" and was **wrong** — the margin is 3.5
+  units seen edge-on, so it is a thin band in a 640px thumbnail. The pixel probe settled it.
+  Sample the render at projected world points; do not eyeball a strip.
+
+**And the ceiling had a light on it and nothing else**: a ceiling rose round the pendant, a
+loft hatch, a smoke alarm, plus a socket at skirting height and a radiator under the window
+(the kitchen passes `radiator: false` — you do not put one under the sink window).
+
+Verified: outdoor maps untouched (marge and commons still road 1, green aprons 4, street 340
+and 323 meshes), 44/44 jobs, 0 console errors.
+
 ## v1.31 (2026-08-12) — The Numbers: the back page of the notebook
 
 A fourth notebook tab, in Pop's voice: the page where he kept his tallies. **Every figure is

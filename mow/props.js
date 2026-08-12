@@ -660,14 +660,23 @@ export function buildYard(scene, def, grass, quality) {
   // --- surround: street, sidewalk, neighbor silhouettes, horizon ---
   const sur = new THREE.Group(); world.group.add(sur);
   // no tarmac where there is no street (see the same list in street.js — kept literal here
-  // rather than importing hood.js, which would make props <-> hood circular)
-  if (!['parkland', 'openfield', 'water', 'city', 'orchardland'].includes(def.hood)) {
+  // rather than importing hood.js, which would make props <-> hood circular).
+  // ⚠️ 'indoor' was missing from BOTH lists, so the four indoor maps were being given a road,
+  // a PAVEMENT ACROSS THE ROOM (the 1.6-wide strip at z −1.1 sits between the carpet and the
+  // north wall) and centre-lines — plus street.js's five houses and moving traffic, right
+  // outside the window you can see through. Keep the two lists in step.
+  const INDOOR = def.hood === 'indoor';
+  if (!INDOOR && !['parkland', 'openfield', 'water', 'city', 'orchardland'].includes(def.hood)) {
     const road = new THREE.Mesh(new THREE.PlaneGeometry(W + 24, 5), mat(0x4a4a4e)); road.rotation.x = -Math.PI / 2; road.position.set(W / 2, -0.02, -4.4); sur.add(road);
     const walk = new THREE.Mesh(new THREE.PlaneGeometry(W + 24, 1.6), mat(0xbdb6a6)); walk.rotation.x = -Math.PI / 2; walk.position.set(W / 2, -0.01, -1.1); sur.add(walk);
   }
-  const apron = new THREE.Mesh(new THREE.PlaneGeometry(W + 60, 60), mat(0x5c8747)); apron.rotation.x = -Math.PI / 2; apron.position.set(W / 2, -0.03, H + 30); sur.add(apron);
-  const apron2 = new THREE.Mesh(new THREE.PlaneGeometry(W + 60, 24), mat(0x5c8747)); apron2.rotation.x = -Math.PI / 2; apron2.position.set(W / 2, -0.03, -18.8); sur.add(apron2);
-  for (const sx of [-1, 1]) { const side = new THREE.Mesh(new THREE.PlaneGeometry(30, H + 90), mat(0x5c8747)); side.rotation.x = -Math.PI / 2; side.position.set(sx < 0 ? -15.2 : W + 15.2, -0.03, H / 2 - 10); sur.add(side); }
+  // ⚠️ indoors the apron is the FLOOR, not more lawn. It was grass-green under the furniture
+  // and right up to the skirting, so the carpet appeared to run on for ever and the room read
+  // as a lawn with walls around it. `def.room.floor` names the boards/lino/parquet.
+  const aproC = INDOOR ? ((def.room && def.room.floor) ?? 0x8a6a4a) : 0x5c8747;
+  const apron = new THREE.Mesh(new THREE.PlaneGeometry(W + 60, 60), mat(aproC)); apron.rotation.x = -Math.PI / 2; apron.position.set(W / 2, -0.03, H + 30); sur.add(apron);
+  const apron2 = new THREE.Mesh(new THREE.PlaneGeometry(W + 60, 24), mat(aproC)); apron2.rotation.x = -Math.PI / 2; apron2.position.set(W / 2, -0.03, -18.8); sur.add(apron2);
+  for (const sx of [-1, 1]) { const side = new THREE.Mesh(new THREE.PlaneGeometry(30, H + 90), mat(aproC)); side.rotation.x = -Math.PI / 2; side.position.set(sx < 0 ? -15.2 : W + 15.2, -0.03, H / 2 - 10); sur.add(side); }
   // the neighbourhood across the street (houses, drives, traffic, people) is street.js —
   // game.js builds it right after this, so it can push its windows into world.windows
   // water tower on the hill

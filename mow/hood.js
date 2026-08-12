@@ -504,6 +504,29 @@ function dressRoom(room, R, W, H, cx, cz, wh, m, skirtC) {
   // down to wall brightness — the same guard street.js uses for its window materials.
   lamp.traverse(o => { if (o.isMesh) o.userData.keepMat = true; });
   room.add(lamp);
+  // ---- the threshold: the carpet has to visibly END, or the lawn just fades into floor ----
+  const edge = R.edge ?? trim;
+  for (const [bx, bz, bw, bd] of [[cx, -0.16, W + 0.5, 0.32], [cx, H + 0.16, W + 0.5, 0.32]])
+    room.add(box(bw, 0.16, bd, edge, bx, 0.08, bz));
+  for (const sx of [-0.16, W + 0.16]) room.add(box(0.32, 0.16, H + 0.5, edge, sx, 0.08, cz));
+  // ---- the ceiling, which had a light on it and nothing else ----
+  const rose = R.lamp === 'strip' ? null : cyl(1.5, 1.7, 0.22, R.ceil ?? 0xe4ddc9, cx + (R.lampZ ?? 0) * 0, wh - 0.11, cz + (R.lampZ ?? 0), 16);
+  if (rose) { rose.position.x = cx; room.add(rose); room.add(cyl(0.95, 0.95, 0.10, R.ceilRose ?? trim, cx, wh - 0.2, cz + (R.lampZ ?? 0), 16)); }
+  room.add(box(0.55, 0.10, 0.55, 0xf0ead8, cx + W * 0.3, wh - 0.06, cz - H * 0.3));   // a smoke alarm, as required
+  if (R.hatch !== false) {                                                            // and the loft hatch
+    room.add(box(2.6, 0.12, 2.6, trim, cx - W * 0.32, wh - 0.07, cz + H * 0.3));
+    room.add(box(2.2, 0.08, 2.2, R.ceil ?? 0xe4ddc9, cx - W * 0.32, wh - 0.12, cz + H * 0.3));
+  }
+  // ---- and the small things at skirting height that say somebody lives here ----
+  const sockZ = cz + (R.sockZ ?? H * 0.28);
+  room.add(box(0.16, 0.5, 0.75, 0xf0ead8, wallIn.w + 0.02, 0.95, sockZ));             // a socket
+  room.add(box(0.10, 0.14, 0.14, 0x8a8f94, wallIn.w + 0.1, 0.95, sockZ));
+  if (R.radiator !== false) {                                                         // a radiator under the window
+    const rw = Math.min(6.5, W * 0.3);
+    for (let i = 0; i < 9; i++) room.add(box(rw / 10, 2.0, 0.42, R.rad ?? 0xe8e4da, cx - rw / 2 + (i + 0.5) * (rw / 9), 1.25, -m + 0.62));
+    room.add(box(rw + 0.3, 0.16, 0.5, R.rad ?? 0xe8e4da, cx, 2.3, -m + 0.62));
+    room.add(cyl(0.09, 0.09, 0.8, 0x9aa0a6, cx + rw / 2 + 0.05, 0.5, -m + 0.62, 6));  // its pipe
+  }
   placeFurniture(room, R);   // and the things that stand in it, out in the margin band
   // ---- curtains, so the window is a window and not a hole ----
   if (R.window !== false) {
