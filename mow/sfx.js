@@ -34,18 +34,68 @@ let NB = null;
 function noiseSrc() { if (!NB) NB = noiseBuf(); const s = AC.createBufferSource(); s.buffer = NB; s.loop = true; return s; }
 
 // ---------------- engine ----------------
+// Seven machines, two kinds of voice. `petrol` is a pull-cord, a putter and a lowpassed
+// thump; `electric` is a spin-up, a whine and moving air, with no cord and no putter —
+// because the Hover has no piston in it and the Tweezers barely has a motor.
+// ⚠️ These MUST track props.js. When the machines were differentiated visually they all
+// still sounded like the same small four-stroke, which read as a bug in the mix.
 const ENGINE_VOICE = {
-  push:  { f: 86, lop: 480, put: 11, wob: 0.06, whir: 1500, whirQ: 1.1, vol: 0.5 },
-  self:  { f: 96, lop: 560, put: 12.5, wob: 0.05, whir: 1750, whirQ: 1.2, vol: 0.52 },
-  wide:  { f: 74, lop: 430, put: 9.5, wob: 0.07, whir: 1300, whirQ: 1.0, vol: 0.58 },
-  rider: { f: 58, lop: 360, put: 6.8, wob: 0.10, whir: 950, whirQ: 0.9, vol: 0.66 },
+  push:   { f: 86, lop: 480, put: 11, wob: 0.06, whir: 1500, whirQ: 1.1, vol: 0.50, lug: 1.35 },
+  self:   { f: 96, lop: 560, put: 12.5, wob: 0.05, whir: 1750, whirQ: 1.2, vol: 0.52, lug: 1.15 },
+  wide:   { f: 74, lop: 430, put: 9.5, wob: 0.07, whir: 1300, whirQ: 1.0, vol: 0.58, lug: 1.10 },
+  rider:  { f: 58, lop: 360, put: 6.8, wob: 0.10, whir: 950, whirQ: 0.9, vol: 0.66, lug: 0.80 },
+  // a walk-behind the size of a door: bigger bore, slower beat, and it does not care
+  titan:  { f: 42, lop: 285, put: 5.0, wob: 0.13, whir: 720, whirQ: 0.8, vol: 0.72, lug: 0.45, cord: 1.7 },
+  // a fan on a cushion of air — the air is most of what you hear
+  hover:  { kind: 'electric', f: 430, hum: 128, air: 820, airQ: 0.6, airG: 0.30, vol: 0.34, spin: 1.4, lug: 0.35 },
+  // 22 cm of blade on a battery. You have to lean in to hear it, which is the joke
+  tweezer:{ kind: 'electric', f: 990, hum: 320, air: 5400, airQ: 2.6, airG: 0.045, vol: 0.11, spin: 0.45, lug: 0.20 },
 };
 export function engineStart(gear) {
   if (!ac()) return;
   engineStop();
   const v = ENGINE_VOICE[gear] || ENGINE_VOICE.push;
   const g = AC.createGain(); g.gain.value = 0; g.connect(buses.eng);
-  // core thump: saw + square detuned through lowpass
+  const t0 = AC.currentTime;
+  const nodes = [];
+
+  if (v.kind === 'electric') {
+    // ---- whine: two saws a hair apart so they beat, plus a low hum for body ----
+    const o1 = AC.createOscillator(); o1.type = 'sawtooth'; o1.frequency.value = v.f;
+    const o2 = AC.createOscillator(); o2.type = 'sawtooth'; o2.frequency.value = v.f * 1.006;
+    const hum = AC.createOscillator(); hum.type = 'triangle'; hum.frequency.value = v.hum;
+    const lp = AC.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = v.f * 4.5; lp.Q.value = 1.6;
+    const og = AC.createGain(); og.gain.value = 0.16;
+    const hg = AC.createGain(); hg.gain.value = 0.10;
+    o1.connect(og); o2.connect(og); og.connect(lp); lp.connect(g);
+    hum.connect(hg); hg.connect(g);
+    // ---- moving air: the cushion under the Hover, a thin hiss on the Tweezers ----
+    const n = noiseSrc(); const bp = AC.createBiquadFilter(); bp.type = 'bandpass'; bp.frequency.value = v.air; bp.Q.value = v.airQ;
+    const ng = AC.createGain(); ng.gain.value = v.airG;
+    n.connect(bp); bp.connect(ng); ng.connect(g);
+    o1.start(); o2.start(); hum.start(); n.start();
+    nodes.push(o1, o2, hum, n);
+    // spin-up: it winds up to speed instead of coughing into life
+    o1.frequency.setValueAtTime(v.f * 0.22, t0); o1.frequency.exponentialRampToValueAtTime(v.f, t0 + v.spin);
+    o2.frequency.setValueAtTime(v.f * 0.22, t0); o2.frequency.exponentialRampToValueAtTime(v.f * 1.006, t0 + v.spin);
+    ng.gain.setValueAtTime(0.0001, t0); ng.gain.exponentialRampToValueAtTime(Math.max(0.0002, v.airG), t0 + v.spin * 0.8);
+    g.gain.setValueAtTime(0.0001, t0); g.gain.linearRampToValueAtTime(v.vol, t0 + v.spin * 0.75);
+    engine = {
+      g, nodes, v, stopped: false,
+      set(load, speed) {
+        const t = AC.currentTime;
+        // a motor holds its note: it rises a little with speed and lugs only slightly
+        const rpm = 0.96 + speed * 0.10 - load * 0.06 * v.lug;
+        o1.frequency.setTargetAtTime(v.f * rpm, t, 0.10);
+        o2.frequency.setTargetAtTime(v.f * 1.006 * rpm, t, 0.10);
+        ng.gain.setTargetAtTime(v.airG * (1 + speed * 0.35), t, 0.12);
+        g.gain.setTargetAtTime(v.vol * (1 + load * 0.22), t, 0.1);
+      },
+    };
+    return;
+  }
+
+  // ---- petrol: core thump, saw + square detuned through a lowpass ----
   const o1 = AC.createOscillator(); o1.type = 'sawtooth'; o1.frequency.value = v.f;
   const o2 = AC.createOscillator(); o2.type = 'square'; o2.frequency.value = v.f * 0.5;
   const lp = AC.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = v.lop; lp.Q.value = 0.8;
@@ -63,35 +113,49 @@ export function engineStart(gear) {
   const wob = AC.createOscillator(); wob.frequency.value = 0.6; const wg = AC.createGain(); wg.gain.value = v.f * v.wob;
   wob.connect(wg); wg.connect(o1.frequency);
   o1.start(); o2.start(); lfo.start(); n.start(); wob.start();
-  // the pull-cord: rip — sputter, sputter — settle into the putter
-  const t0 = AC.currentTime;
-  const cord = noiseSrc(); const cbp = AC.createBiquadFilter(); cbp.type = 'bandpass'; cbp.frequency.setValueAtTime(2400, t0); cbp.frequency.exponentialRampToValueAtTime(500, t0 + 0.22); cbp.Q.value = 1.4;
+  nodes.push(o1, o2, lfo, n, wob);
+  // the pull-cord: rip — sputter, sputter — settle into the putter. A bigger engine takes
+  // a longer haul on the rope, so `cord` stretches the whole ritual.
+  const c = v.cord || 1;
+  const cord = noiseSrc(); const cbp = AC.createBiquadFilter(); cbp.type = 'bandpass'; cbp.frequency.setValueAtTime(2400 / c, t0); cbp.frequency.exponentialRampToValueAtTime(500 / c, t0 + 0.22 * c); cbp.Q.value = 1.4;
   const cg = AC.createGain(); cord.connect(cbp); cbp.connect(cg); cg.connect(buses.eng);
-  cg.gain.setValueAtTime(0.001, t0); cg.gain.exponentialRampToValueAtTime(0.5, t0 + 0.05); cg.gain.exponentialRampToValueAtTime(0.0001, t0 + 0.3);
-  cord.start(t0); cord.stop(t0 + 0.35);
+  cg.gain.setValueAtTime(0.001, t0); cg.gain.exponentialRampToValueAtTime(0.5, t0 + 0.05 * c); cg.gain.exponentialRampToValueAtTime(0.0001, t0 + 0.3 * c);
+  cord.start(t0); cord.stop(t0 + 0.35 * c);
   o1.frequency.setValueAtTime(v.f * 0.45, t0);
   g.gain.setValueAtTime(0, t0);
-  for (let i = 0; i < 3; i++) { const st = t0 + 0.24 + i * 0.16; g.gain.setValueAtTime(0.0001, st); g.gain.exponentialRampToValueAtTime(v.vol * (0.5 + i * 0.15), st + 0.03); g.gain.exponentialRampToValueAtTime(0.02, st + 0.11); }
-  g.gain.setValueAtTime(0.02, t0 + 0.72);
-  g.gain.linearRampToValueAtTime(v.vol, t0 + 1.0);
-  o1.frequency.linearRampToValueAtTime(v.f, t0 + 0.9);
-  engine = { g, o1, o2, lfo, n, wob, v, base: v.f, stopped: false };
+  for (let i = 0; i < 3; i++) { const st = t0 + (0.24 + i * 0.16) * c; g.gain.setValueAtTime(0.0001, st); g.gain.exponentialRampToValueAtTime(v.vol * (0.5 + i * 0.15), st + 0.03); g.gain.exponentialRampToValueAtTime(0.02, st + 0.11); }
+  g.gain.setValueAtTime(0.02, t0 + 0.72 * c);
+  g.gain.linearRampToValueAtTime(v.vol, t0 + 1.0 * c);
+  o1.frequency.linearRampToValueAtTime(v.f, t0 + 0.9 * c);
+  engine = {
+    g, nodes, v, stopped: false,
+    set(load, speed) {
+      const t = AC.currentTime;
+      // pitch digs DOWN under load, and `lug` says how much this engine minds: Old Faithful
+      // bogs hard in the jungle, the Titan hardly notices it
+      const rpm = 0.9 + speed * 0.16 - load * 0.17 * v.lug;
+      o1.frequency.setTargetAtTime(v.f * rpm, t, 0.09);
+      o2.frequency.setTargetAtTime(v.f * 0.5 * rpm, t, 0.09);
+      lfo.frequency.setTargetAtTime(v.put * (0.92 + speed * 0.2 - load * 0.22 * v.lug), t, 0.12);
+      g.gain.setTargetAtTime(v.vol * (1 + load * 0.5), t, 0.1);
+    },
+  };
 }
 export function engineStop() {
   if (!engine || engine.stopped || !AC) { engine = null; return; }
   const e = engine; engine = null; e.stopped = true;
   e.g.gain.setTargetAtTime(0, AC.currentTime, 0.18);
-  setTimeout(() => { try { e.o1.stop(); e.o2.stop(); e.lfo.stop(); e.n.stop(); e.wob.stop(); } catch (_) { } }, 700);
+  setTimeout(() => { for (const n of e.nodes) { try { n.stop(); } catch (_) { } } }, 700);
 }
-// load 0..1 (thick grass), speed 0..1 — pitch digs DOWN under load, whir rises with speed
+// load 0..1 (thick grass), speed 0..1 — each voice answers in its own way
 export function engineSet(load, speed) {
   if (!engine || !AC) return;
-  const e = engine, t = AC.currentTime;
-  const rpm = 0.9 + speed * 0.16 - load * 0.17;
-  e.o1.frequency.setTargetAtTime(e.base * rpm, t, 0.09);
-  e.o2.frequency.setTargetAtTime(e.base * 0.5 * rpm, t, 0.09);
-  e.lfo.frequency.setTargetAtTime(e.v.put * (0.92 + speed * 0.2 - load * 0.22), t, 0.12);
-  e.g.gain.setTargetAtTime(e.v.vol * (1 + load * 0.5), t, 0.1);
+  engine.set(load, speed);
+}
+// QA: what the engine is actually made of right now (see __fc.sfx)
+export function engineDebug() {
+  return engine ? { kind: engine.v.kind || 'petrol', nodes: engine.nodes.length, vol: engine.v.vol,
+    types: engine.nodes.map(n => n.type || 'noise'), freqs: engine.nodes.map(n => n.frequency ? +n.frequency.value.toFixed(1) : null) } : null;
 }
 export function trimmerStart() {
   if (!ac()) return;

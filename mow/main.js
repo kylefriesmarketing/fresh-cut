@@ -331,6 +331,106 @@ window.__fc = {
   shot: () => renderer.domElement.toDataURL('image/jpeg', 0.85),
   post: () => post,
   gl: () => ({ renderer, camera, scene }),
+  // What the skyline actually costs, measured properly. ⚠️ Wall-clock timing of GPU work
+  // LIES here (v1.9 measured post-processing as "faster than off", which is impossible) —
+  // this uses EXT_disjoint_timer_query_webgl2, and reports draw calls and triangles too,
+  // which are exact and don't need a stable clock at all.
+  heroCost: async (frames = 24) => {
+    const heroes = [];
+    G.world.group.traverse(o => { if (o.userData.hero) heroes.push(o); });
+    const gl = renderer.getContext();
+    const ext = gl.getExtension('EXT_disjoint_timer_query_webgl2');
+    // ⚠️ `renderer.info` is RESET on every render() call, and post.js renders several passes
+    // per frame — so reading it after drawFrame reports the composite quad alone (1 call,
+    // 2 triangles) and looks like the scene is free. autoReset off + a manual reset gives
+    // the real per-frame totals.
+    renderer.info.autoReset = false;
+    const pass = async (on) => {
+      for (const h of heroes) h.visible = on;
+      renderer.info.reset(); drawFrame(0.016);
+      const info = { calls: renderer.info.render.calls, tris: renderer.info.render.triangles };
+      if (!ext) return { ...info, ms: null };
+      const times = [];
+      for (let i = 0; i < frames; i++) {
+        const q = gl.createQuery();
+        gl.beginQuery(ext.TIME_ELAPSED_EXT, q);
+        drawFrame(0.016);
+        gl.endQuery(ext.TIME_ELAPSED_EXT);
+        for (let t = 0; t < 300; t++) {                   // poll until the driver hands it back
+          await new Promise(r => setTimeout(r, 2));
+          if (gl.getQueryParameter(q, gl.QUERY_RESULT_AVAILABLE) &&
+              !gl.getParameter(ext.GPU_DISJOINT_EXT)) { times.push(gl.getQueryParameter(q, gl.QUERY_RESULT) / 1e6); break; }
+        }
+        gl.deleteQuery(q);
+      }
+      times.sort((a, b) => a - b);
+      return { ...info, ms: +times[times.length >> 1].toFixed(3), lo: +times[0].toFixed(3), hi: +times[times.length - 1].toFixed(3), n: times.length };
+    };
+    const on = await pass(true), off = await pass(false);
+    // CONTROL: hide everything. If this does NOT collapse, the timing is measuring nothing
+    // and the numbers above are worthless — v1.9 shipped exactly that kind of bad probe.
+    scene.visible = false;
+    const control = await pass(true);
+    scene.visible = true;
+    for (const h of heroes) h.visible = true;
+    renderer.info.autoReset = true;
+    const noise = on.ms != null ? +(on.hi - on.lo).toFixed(3) : null;
+    return {
+      heroes: heroes.length, on, off, control,
+      deltaCalls: on.calls - off.calls, deltaTris: on.tris - off.tris,
+      deltaMs: on.ms != null ? +(on.ms - off.ms).toFixed(3) : null,
+      noiseMs: noise, valid: control.ms != null && control.ms < on.ms * 0.5,
+      // the honest reading: if |deltaMs| < noise, say so instead of quoting a number
+      verdict: on.ms != null && Math.abs(on.ms - off.ms) < noise
+        ? `below the noise floor (spread ${noise}ms); cost is ${on.calls - off.calls} draw calls / ${on.tris - off.tris} tris`
+        : `${(on.ms - off.ms).toFixed(3)}ms`,
+    };
+  },
+  // THE BATTERY, in the repo instead of being retyped into the console every session.
+  // Every job boots → mows → completes, and each one is checked for the things that have
+  // actually broken before: deck alignment, a bag, a hero, a palette.
+  //   await __fc.battery()            → {pass, fail, errors, rows}
+  //   __fc.battery({log:true})        → also prints a table
+  // ⚠️ It cycles the gear per job on purpose — a mower that fails to build only shows up
+  // if something other than 'push' gets used.
+  battery: async (opts = {}) => {
+    const errs = [];
+    const onErr = (e) => errs.push('ERR ' + (e.message || e));
+    const oldErr = console.error;
+    console.error = (...a) => { errs.push(a.join(' ')); oldErr(...a); };
+    window.addEventListener('error', onErr);
+    const ids = (opts.ids || JOBS.map(j => j.id).concat(['daily']));
+    const gears = opts.gears || ['push', 'self', 'wide', 'rider'];
+    const rows = [];
+    for (let i = 0; i < ids.length; i++) {
+      const id = ids[i];
+      try {
+        window.__fcAuto = true;
+        window.__fc.startJob(id, gears[i % gears.length]);
+        await new Promise(r => setTimeout(r, opts.settle || 60));
+        window.__fc.mowAll();
+        window.__fc.drive(0, 60);
+        const g = G;
+        rows.push({
+          id, gear: g.gearKey, pct: +g.grass.pct().toFixed(3), done: !!g.done,
+          zones: g.zoneNames.length, hero: (g.def.hero || []).length, pal: !!g.def.palette,
+          deck: Math.abs(g.deckAt - (g.mowerOff + (g.mowerG.userData.deckLocal || 0))) < 1e-9,
+          bag: !!g.mowerG.userData.bag,
+          ok: !!g.done && g.grass.pct() >= 0.999 && !!g.mowerG.userData.bag,
+        });
+      } catch (e) { rows.push({ id, ok: false, err: e.message }); }
+      document.getElementById('comp-next')?.click();
+      document.getElementById('cred-done')?.click();
+      await new Promise(r => setTimeout(r, 30));
+      document.getElementById('comp-next')?.click();
+      document.getElementById('cred-done')?.click();
+    }
+    console.error = oldErr;
+    window.removeEventListener('error', onErr);
+    const out = { pass: rows.filter(r => r.ok).length, fail: rows.filter(r => !r.ok), errors: [...new Set(errs)], rows };
+    if (opts.log) console.table(rows);
+    return out;
+  },
   // Photograph the game from inside it. The Browser pane never composites this canvas, so
   // the built-in screenshot tools time out and the canvas reports 0×0 — but a WebGL drawing
   // buffer is only cleared on COMPOSITE, so sizing + rendering + toDataURL IN ONE TASK gives

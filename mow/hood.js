@@ -189,18 +189,27 @@ const TOWN = {
     walk.position.y = tankY + 3.6 * s; walk.rotation.x = Math.PI / 2; g.add(walk);
   },
   elevator(g, s, h) {                           // the grain elevator on the rail line
-    const c = h.c || 0xd8d2c4, r = 3.2 * s, n = 6, span = (n - 1) * r * 1.94;
-    for (let i = 0; i < n; i++) g.add(cyl(r, r, 22 * s, c, -span / 2 + i * r * 1.94, 11 * s, 0, 12));
-    g.add(box(span + r * 2.4, 6 * s, r * 2.4, 0xcac3b3, 0, 25 * s, 0));      // headhouse
-    g.add(box(span + r * 3.2, 0.7 * s, r * 3.0, 0x8f8578, 0, 28.4 * s, 0));  // its eave
-    g.add(box(3.6 * s, 9 * s, 3.6 * s, 0xb9b2a4, span * 0.18, 32 * s, 0));   // the leg that lifts the grain
-    g.add(cone(3.2 * s, 3 * s, 0x6f6a60, span * 0.18, 38 * s, 0, 6));
-    // the conveyor gallery down to the shed — without it the silo bank reads as a colonnade
-    const gal = box(1.9 * s, 2.2 * s, 15 * s, 0xa8a294, -span / 2 - 2.4 * s, 20 * s, r * 0.9);
-    gal.rotation.x = 0.55; gal.rotation.y = 0.35; g.add(gal);
-    g.add(box(10 * s, 5.5 * s, 8 * s, h.shed || 0x9c4f42, -span / 2 - 4 * s, 2.75 * s, r * 1.6));  // the tip shed
+    // ⚠️⚠️ THIS READ AS A GREEK TEMPLE for two versions. Six pale cylinders in a row, under
+    // a slab wider than they are tall, with a base course under them, IS a portico — and my
+    // first fix (a skirt across the silo bases) made it worse, because that skirt reads as
+    // a stylobate. **The thing that separates an elevator from a temple is PROPORTION, not
+    // detail**: fewer, slimmer, much taller silos (21 m wide × 30 m tall, not 31 × 22), a
+    // headhouse that is taller than it is wide and spans only the middle, and dirty concrete
+    // instead of marble. Verified by looking at it from two maps, which is how it was caught.
+    const c = h.c || 0xc6c0b1, r = 2.7 * s, n = 5, span = (n - 1) * r * 1.96, H = 30 * s;
+    for (let i = 0; i < n; i++) g.add(cyl(r, r, H, c, -span / 2 + i * r * 1.96, H / 2, 0, 12));
+    g.add(box(span * 0.54, 13 * s, r * 2.4, 0xb5ae9e, 0, H + 6.5 * s, 0));   // headhouse, TALL
+    g.add(box(span * 0.62, 0.8 * s, r * 3.0, 0x82796c, 0, H + 13.4 * s, 0)); // its eave
+    g.add(box(3.4 * s, 7 * s, 3.4 * s, 0xa8a294, 0, H + 16.6 * s, 0));       // the leg that lifts the grain
+    g.add(cone(3.0 * s, 2.6 * s, 0x6f6a60, 0, H + 21.4 * s, 0, 6));
+    for (const sx of [-1, 1]) g.add(box(0.5 * s, 2.2 * s, 0.5 * s, 0x8f8578, sx * span * 0.2, H + 14.5 * s, 0)); // roof stubs
+    g.add(box(span * 0.9, 2.6 * s, 0.5 * s, 0x8f8578, 0, H * 0.78, r * 1.02)); // the band the town's name is on
+    // the conveyor gallery, sloping down to the tip shed — the other unmistakable bit
+    const gal = box(1.8 * s, 2.0 * s, 17 * s, 0xa8a294, -span / 2 - 3.6 * s, 21 * s, r * 1.1);
+    gal.rotation.x = 0.62; gal.rotation.y = 0.30; g.add(gal);
+    g.add(box(10 * s, 5.5 * s, 8 * s, h.shed || 0x9c4f42, -span / 2 - 6 * s, 2.75 * s, r * 2.0));  // the tip shed
     const rf = gableRoof(10 * s, 8 * s, 1.6 * s, 0x4f4a44, h.shed || 0x9c4f42);
-    rf.position.set(-span / 2 - 4 * s, 5.5 * s, r * 1.6); g.add(rf);
+    rf.position.set(-span / 2 - 6 * s, 5.5 * s, r * 2.0); g.add(rf);
   },
   church(g, s, h) {                             // nave, tower, clock, spire
     const c = h.c || 0xe6dfcb, roof = h.roof || 0x5f5750;
@@ -241,8 +250,22 @@ const TOWN = {
     g.add(box(17 * s, 6 * s, 10 * s, c, 15 * s, 3 * s, 3 * s));                       // the entrance wing
     g.add(box(8 * s, 0.5 * s, 4.4 * s, 0xb9b2a4, 15 * s, 6.3 * s, 8.4 * s));          // the canopy over the doors
     g.add(box(9 * s, 2.6 * s, 4 * s, 0xc9c2b2, 3 * s, 18.3 * s, 0));                  // rooftop plant
-    g.add(box(2.6 * s, 0.8 * s, 0.3 * s, 0xc0392b, -13 * s, 19 * s, 3.3 * s));        // the only red in town
-    g.add(box(0.8 * s, 2.6 * s, 0.3 * s, 0xc0392b, -13 * s, 19 * s, 3.3 * s));
+    // ⚠️ Window bands alone are exactly what the city ring towers wear, so from the roof
+    // at Vance & Co. this read as one more office block. The things that say HOSPITAL at
+    // half a kilometre are the red cross, the helipad and the mast — so it has all three.
+    // The cross goes BIG and on the face you actually see. A slab with window bands is
+    // exactly what the city ring towers wear, so from the roof at Vance & Co. this was just
+    // another office block — the red is the whole identity, and it was too small to work.
+    for (const [px, pz, ry] of [[0, 6.7 * s, 0], [-16.2 * s, 0, Math.PI / 2]]) {
+      const arm1 = box(6.4 * s, 1.9 * s, 0.35 * s, 0xc0392b, px, 14.2 * s, pz); arm1.rotation.y = ry; g.add(arm1);
+      const arm2 = box(1.9 * s, 6.4 * s, 0.35 * s, 0xc0392b, px, 14.2 * s, pz); arm2.rotation.y = ry; g.add(arm2);
+    }
+    g.add(cyl(4.4 * s, 4.4 * s, 0.5 * s, 0xb0aca0, 9 * s, 17.4 * s, 0, 16));          // helipad
+    g.add(cyl(3.1 * s, 3.1 * s, 0.12 * s, 0xe8e2d2, 9 * s, 17.7 * s, 0, 16));
+    for (const sx of [-1.1 * s, 1.1 * s]) g.add(box(0.5 * s, 0.14 * s, 3.2 * s, 0xe8e2d2, 9 * s + sx, 17.8 * s, 0));  // the H, lying flat
+    g.add(box(2.2 * s, 0.14 * s, 0.5 * s, 0xe8e2d2, 9 * s, 17.8 * s, 0));
+    const mast = cyl(0.16 * s, 0.22 * s, 9 * s, 0xb9bcc0, -9 * s, 22 * s, -3 * s, 6); g.add(mast);
+    g.add(sph(0.4 * s, 0xd8483c, -9 * s, 26.8 * s, -3 * s, 8));                       // its night light
   },
   civic(g, s, h) {                              // town hall: portico, pediment, a clock that is slow
     const c = h.c || 0xd8d2c0, trim = 0xefe9da;
@@ -406,6 +429,7 @@ function buildHeroes(root, def, cx, cz) {
     g.position.set(cx + (h.x || 0), 0, cz + (h.z || 0));
     if (h.rot) g.rotation.y = h.rot;
     g.traverse(o => { if (o.isMesh) o.castShadow = false; });
+    g.userData.hero = h.k;      // so they can be toggled for a measured A/B (see __fc.heroCost)
     brighten(g, h.lift ?? 0.26); root.add(g);
   }
 }

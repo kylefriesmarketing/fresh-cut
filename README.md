@@ -15,21 +15,84 @@ Deploy = copy the whole folder to any static host (GitHub Pages works as-is).
 
 ## ⏭️ NEXT SESSION — what's open
 
-The standing brief of 2026-08-11 (campaign heroes + palettes, and the mower pass) is
-**DONE — see v1.28 below.** Every one of the 44 jobs now carries a `hero` and a `palette`.
-What's left, in the order I'd take it:
-
 1. **The indoor rooms are still plain walls** (`hood.indoor`, v1.19's note). They now have a
    real window with a set-piece beyond it, but the walls themselves want a picture rail, a
    light fitting, a skirting shadow — something that says *room* rather than *box*.
-2. **Sound for the new machines.** `ENGINE_VOICE` in sfx.js still has one voice per gear
-   from before they were differentiated: the Hover should whine and not putter, the Titan
-   should be a much bigger engine, and the Tweezers should barely be audible.
-3. **Notebook stats page** (from the original backlog — lifetime m², total time, finds,
+2. **Notebook stats page** (from the original backlog — lifetime m², total time, finds,
    per-job bests; the data is already in `fc-save`).
-4. A trailer/screenshot pass would be cheap now: `__fc.shoot(name, port)` photographs the
-   game from inside it (see below), and the heroes finally give every map a skyline worth
-   pointing a camera at.
+3. A trailer/screenshot pass would be cheap now: `__fc.shoot(name, port)` photographs the
+   game from inside it, `__fc.grid`-style montages make a review one look instead of six,
+   and the heroes finally give every map a skyline worth pointing a camera at.
+4. **The rooftop hospital still competes with the city ring.** It's the one hero that isn't
+   distinct — a slab among slabs, six floors up. It carries a big red cross now and that is
+   probably as far as massing can take it; if it ever matters, the answer is to make the
+   ring towers on that map plainer, not the hospital louder.
+
+## v1.29 (2026-08-11) — the machines sound like themselves, and the numbers are honest
+
+**1. Seven machines, two kinds of engine voice.** v1.28 made them *look* different while
+they all still sounded like the same small four-stroke. `ENGINE_VOICE` now carries a `kind`:
+
+- **`petrol`** (push / self / wide / rider / titan) — pull-cord, putter AM, lowpassed thump.
+  The Titan is a much bigger engine (42 Hz vs Old Faithful's 86) with a `cord: 1.7` multiplier
+  that stretches the whole rip-sputter-settle ritual, because a big engine takes a long haul.
+- **`electric`** (hover / tweezer) — **no cord and no putter**: two saws a hair apart so they
+  beat, a low hum for body, moving air, and a *spin-up* instead of a cough. The Hover's air
+  bed is 6× the Tweezers' (`airG` 0.30 vs 0.045) because the cushion is most of what you hear.
+- New per-voice **`lug`** = how much this engine minds thick grass. Measured, wide-open →
+  full load: Old Faithful drops **32%**, the Titan **18%**, the Hover **8.5%**, the Tweezers
+  **7.7%** — a motor holds its note, a tired four-stroke bogs.
+- Volume spread is 6.5× end to end (titan 0.72 → tweezer 0.11). You have to lean in to hear
+  the Tweezers, which is the joke.
+- `engineStop` now walks a `nodes` array instead of five named oscillators, and the load
+  response lives in the engine object as `set(load, speed)` — so adding a third kind of voice
+  doesn't mean touching `engineSet`. QA: `sfx.engineDebug()` returns kind/types/frequencies.
+
+**2. What the skyline actually costs — measured, with a validated probe.** `__fc.heroCost()`
+toggles every `userData.hero` group and times it with `EXT_disjoint_timer_query_webgl2`:
+
+| map | heroes | draw calls | triangles | GPU time |
+|---|---|---|---|---|
+| Hazel Park Commons | 3 | **+44** (of 447) | **+936** (of 179,264) | below noise |
+| Marge's Place | 2 | +25 (of 1006) | +322 (of 85,389) | below noise |
+| Water Tower Hill | 3 | +37 (of 640) | +964 (of 158,474) | below noise |
+
+- ⚠️ **`renderer.info` is reset on every `render()` call**, and post.js runs several passes
+  per frame — so reading it after `drawFrame` reports the *composite quad alone* (1 call, 2
+  triangles) and makes the entire scene look free. `info.autoReset = false` + a manual reset
+  gives real totals. The first run of this probe reported 1 draw call and I nearly believed it.
+- ⚠️ **The probe carries a CONTROL: it hides the whole scene and asserts the time collapses**
+  (it does — 6.3 ms → 0.11 ms). Without that check a dead timer reads as "free", which is
+  exactly the bad measurement v1.9 warns about.
+- The honest verdict is **"below the noise floor"**, not a millisecond figure: frame time in
+  this software-GL browser pane swings 7–12 ms, which is far wider than any difference three
+  buildings could make. The geometry numbers above are exact; the time is not measurable here.
+
+**3. `__fc.battery()` — the job battery lives in the repo now.** It was being retyped into
+the console every session. It boots → mows → completes every job, **cycling the gear** (a
+mower that fails to build only shows up if something other than `push` gets used), and checks
+deck alignment, bag, hero and palette per job. `await __fc.battery({log: true})` prints a
+table. `test/alljobs.mjs` is now a thin CI wrapper around that same function — it takes
+`PORT` and `PW` from the environment instead of hardcoding port 8437 and a Linux Playwright
+path, and it exits non-zero on failure. If the two ever disagree, the one in main.js is real.
+
+**4. Two heroes were weaker than the rest; one is fixed and one is honest.**
+- ⚠️⚠️ **The grain elevator read as a GREEK TEMPLE**, on two maps, for two versions — six pale
+  cylinders in a row under a slab wider than it is tall *is* a portico. **My first fix made it
+  worse**: I added a skirt across the silo bases, which reads as a stylobate. What actually
+  killed it was **proportion, not detail** — fewer, slimmer, much taller silos (21 m wide ×
+  30 m tall instead of 31 × 22), a headhouse that is taller than it is wide and spans only the
+  middle, and dirty concrete instead of marble. Verified on delgado and orchard.
+- The hospital's window bands are the same language the city ring towers wear. It now carries
+  a **big red cross on the face you actually see** (plus one on the flank, a helipad and a lit
+  mast). On the duplex it reads instantly; on the rooftop it is still one slab among slabs.
+
+**5. A real playtest, with real input.** Driving lanes from spawn with `__fc.drive` rather
+than teleporting: **43 sim-seconds of continuous mowing cuts ~5% of Marge's lawn**, so a full
+page is roughly 15 minutes of solid work, and the bag fills about every 3–4 minutes. The
+alternation works — mowing "up" a lane you face the hero, mowing back down you face the
+street. ⚠️ Detail on the machine below about 5 cm does **not** read while playing; what carries
+is silhouette, deck colour and the engine hump. Worth knowing before spending more on it.
 
 ## v1.28 (2026-08-11) — the town has a skyline, and seven machines instead of one
 
