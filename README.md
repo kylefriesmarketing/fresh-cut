@@ -15,9 +15,7 @@ Deploy = copy the whole folder to any static host (GitHub Pages works as-is).
 
 ## ⏭️ NEXT SESSION — what's open
 
-1. **Notebook stats page** (from the original backlog — lifetime m², total time, finds,
-   per-job bests; the data is already in `fc-save`).
-2. A trailer/screenshot pass would be cheap now: `__fc.shoot(name, port)` photographs the
+1. A trailer/screenshot pass would be cheap now: `__fc.shoot(name, port)` photographs the
    game from inside it, montages make a review one look instead of six, and the heroes
    finally give every map a skyline worth pointing a camera at.
 3. **The rooftop hospital still competes with the city ring.** It's the one hero that isn't
@@ -26,6 +24,39 @@ Deploy = copy the whole folder to any static host (GitHub Pages works as-is).
    ring towers on that map plainer, not the hospital louder.
 4. The indoor rooms have furniture against the walls now, but nothing on the **ceiling** other
    than the light, and no rug/threshold where the carpet meets the skirting. Small stuff.
+
+## v1.31 (2026-08-12) — The Numbers: the back page of the notebook
+
+A fourth notebook tab, in Pop's voice: the page where he kept his tallies. **Every figure is
+measured from the save** — a fresh save honestly reads near-zero rather than inventing a
+career for you.
+
+- **Four headline figures**: grass cut (m²), time on the clock, kilometres walked, pages
+  inked — then *"that is 2.5 front lawns, at three hundred square metres a lawn,"* because
+  a raw square-metre count means nothing to anybody.
+- **The Books** — a progress row per book (Route / Odd Jobs / Wider Job Book / Odd Sizes).
+- **The Tallies** — bags tipped, things found, junk in the jar, jobs where nothing was
+  missed, best pattern score, trophies, and **"the one you reach for"** (the mower you have
+  actually finished the most jobs with).
+- **Page by Page** — every finished job with visits, best time, area, pattern and the mower
+  you used.
+
+**⚠️ The area was never being counted, which is odd for a mowing game.** The cut mask is
+8 texels/m, so 64 texels is a square metre and `grass.cut` is already an exact running
+count — `area: grass.cut / 64` in `_complete()`, folded into `lifetime.area`. Note it
+reports the *grass*, not the lot: Marge's is 235 m² of a 20×15 plot, because the house, the
+path and the beds are not lawn. That is the honest number and it should stay that way.
+
+**⚠️ A repeat visit used to ERASE your best run.** `save.done[id]` was overwritten wholesale
+on every completion. It now keeps the best (min time, max found/keeps/area/pattern) plus
+`plays` and `last`. Verified both directions: a faster second run takes the record, and a
+slower third run leaves a planted 12s best untouched while still counting the visit.
+
+- `ensure()` back-fills `area` and `gearJobs` on old saves so nothing reads NaN.
+- ⚠️ `wireNotebookTabs` now toggles `#nb-<tab>` generically instead of naming three ids by
+  hand — which is exactly how a fourth page gets forgotten.
+- ⚠️ Don't format the distance as `num(x/1000*10)/10`: `num()` runs `toLocaleString`, so past
+  10,000 km the comma turns the divide into NaN. `(dist/1000).toFixed(1)`.
 
 ## v1.30 (2026-08-11) — the indoor rooms are rooms now
 

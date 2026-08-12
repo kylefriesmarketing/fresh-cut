@@ -50,6 +50,10 @@ export function ensure(save) {
   if (!save.trophies) save.trophies = [];
   if (!save.lifetime) save.lifetime = { dist: 0, time: 0, bags: 0, patternBest: 0, perfectFinds: 0, gears: [] };
   if (!save.lifetime.gears) save.lifetime.gears = [];
+  // added with the numbers page — old saves have no area or per-gear tally and must not
+  // read as NaN, so they start at zero and simply begin counting from the next job.
+  if (save.lifetime.area === undefined) save.lifetime.area = 0;
+  if (!save.lifetime.gearJobs) save.lifetime.gearJobs = {};
   if (save.paint === undefined) save.paint = null;
   return save;
 }
@@ -61,9 +65,11 @@ export function award(save, run) {
   L.dist += run.dist || 0;
   L.time += run.time || 0;
   L.bags += run.bags || 0;
+  L.area += run.area || 0;
   if (run.pattern && run.pattern.score > L.patternBest) L.patternBest = run.pattern.score;
   if (run.totalDisc > 0 && run.found >= run.totalDisc) L.perfectFinds++;
   if (run.gear && !L.gears.includes(run.gear)) L.gears.push(run.gear);
+  if (run.gear) L.gearJobs[run.gear] = (L.gearJobs[run.gear] || 0) + 1;   // which one you actually reach for
   const fresh = [];
   for (const t of TROPHIES) {
     if (save.trophies.includes(t.id)) continue;

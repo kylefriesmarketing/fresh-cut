@@ -87,6 +87,13 @@ button{font-family:var(--ui-serif);cursor:pointer}
 .nb-head h2{font-size:26px}
 .nb-head .sub{font-style:italic;color:#7a6c52;font-size:13px}
 .blockhead{margin:16px 0 6px;font-size:13px;letter-spacing:2.5px;color:var(--pencil);text-transform:uppercase;font-weight:bold}
+/* the numbers page: four big figures, then tallies in the same jobrow rhythm as the rest */
+.numgrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:10px;margin:6px 0 4px}
+.numcell{background:rgba(255,255,255,.35);border:1px solid rgba(61,52,40,.18);border-radius:8px;padding:10px 12px}
+.numv{font-size:23px;font-weight:bold;color:var(--ink);line-height:1.15}
+.numl{font-size:11.5px;letter-spacing:1.2px;text-transform:uppercase;color:var(--pencil);margin-top:3px}
+.numbar{display:inline-block;width:120px;height:5px;background:rgba(61,52,40,.16);border-radius:3px;overflow:hidden;vertical-align:middle}
+.numbar i{display:block;height:100%;background:var(--grass);border-radius:3px}
 .jobrow{display:flex;align-items:center;gap:12px;padding:9px 10px;border-radius:8px;border:1px dashed transparent}
 .jobrow:not(.locked):hover{background:rgba(90,143,60,.10);border-color:rgba(90,143,60,.4);cursor:pointer}
 .jobrow.locked{opacity:.45}
@@ -192,11 +199,13 @@ button{font-family:var(--ui-serif);cursor:pointer}
       <button class="nb-tab on" data-tab="jobs">The Route</button>
       <button class="nb-tab" data-tab="pegboard">The Pegboard</button>
       <button class="nb-tab" data-tab="shelf">The Shelf</button>
+      <button class="nb-tab" data-tab="numbers">The Numbers</button>
     </div>
     <div class="rule"></div>
     <div id="nb-jobs"></div>
     <div id="nb-pegboard" class="hidden"><div id="pegboard-list"></div></div>
     <div id="nb-shelf" class="hidden"><div id="shelf-list"></div></div>
+    <div id="nb-numbers" class="hidden"><div id="numbers-list"></div></div>
   </div>
 </div>
 

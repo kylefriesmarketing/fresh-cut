@@ -94,6 +94,7 @@ let zonesVisible = false;
 function openNotebook() {
   ui.renderNotebook(save, pickJob);
   ui.renderShelf(save, (c) => { save.paint = c; persist(); });
+  ui.renderNumbers(save);
   ui.show('notebook'); ui.hide('title');
 }
 function pickJob(id) {
@@ -163,14 +164,26 @@ function onComplete(stats) {
   ui.flash();
   const doneBefore = ui.countCampaignDone(save);
   if (!DEF.daily) {
-    save.done[DEF.id] = { found: stats.found, keeps: stats.keeps, time: Math.round(stats.time) };
+    // ⚠️ this used to overwrite, so a second visit ERASED your best run. It keeps the best
+    // now — fastest time, most found, best pattern — plus a play count, which is what the
+    // numbers page reads. `time` stays as the plain best so old saves still make sense.
+    const prev = save.done[DEF.id] || {};
+    const t = Math.round(stats.time);
+    save.done[DEF.id] = {
+      found: Math.max(prev.found || 0, stats.found), keeps: Math.max(prev.keeps || 0, stats.keeps),
+      time: prev.time ? Math.min(prev.time, t) : t,
+      last: t, plays: (prev.plays || 0) + 1,
+      area: Math.max(prev.area || 0, Math.round(stats.area || 0)),
+      pattern: Math.max(prev.pattern || 0, (stats.pattern && stats.pattern.score) || 0),
+      gear: G ? G.gearKey : prev.gear,
+    };
   } else {
     save.dailyDone = todayStr();
   }
   save.resume = null;
   // the shelf: fold this run into the lifetime totals and see what it earned
   const won = award(save, {
-    dist: stats.dist, time: stats.time, bags: G ? G.bagsEmptied : 0,
+    dist: stats.dist, time: stats.time, bags: G ? G.bagsEmptied : 0, area: stats.area,
     pattern: stats.pattern, found: stats.found, totalDisc: stats.totalDisc, gear: G ? G.gearKey : null,
   });
   for (let i = 0; i < won.length; i++) {

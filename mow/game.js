@@ -394,6 +394,9 @@ export class Game {
       time: this.time, dist: this.dist,
       found: this.found.length, totalDisc: this.disc.length,
       keeps: this.disc.filter(d => d.tier === 'keep' && d.state === 2).length,
+      // the headline number for a mowing game, and it was never being counted: the mask is
+      // 8 texels/m, so 64 texels is a square metre. `cut` is an exact running count.
+      area: this.grass.cut / 64,
       pattern,
     });
   }

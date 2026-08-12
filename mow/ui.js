@@ -102,12 +102,82 @@ export function renderNotebook(save, onPick) {
   </div>`).join('');
 }
 export function wireNotebookTabs() {
-  document.querySelectorAll('.nb-tab').forEach(t => t.onclick = () => {
-    document.querySelectorAll('.nb-tab').forEach(x => x.classList.toggle('on', x === t));
-    $('nb-jobs').classList.toggle('hidden', t.dataset.tab !== 'jobs');
-    $('nb-pegboard').classList.toggle('hidden', t.dataset.tab !== 'pegboard');
-    $('nb-shelf').classList.toggle('hidden', t.dataset.tab !== 'shelf');
+  // generic: every .nb-tab shows #nb-<tab> and hides the others, so a new page is a button
+  // plus a div. It used to name all three ids by hand, which is how a fourth gets forgotten.
+  const tabs = [...document.querySelectorAll('.nb-tab')];
+  tabs.forEach(t => t.onclick = () => {
+    tabs.forEach(x => x.classList.toggle('on', x === t));
+    tabs.forEach(x => $('nb-' + x.dataset.tab)?.classList.toggle('hidden', x !== t));
   });
+}
+
+// ---------- the numbers ----------
+// The back page, where Pop kept his tallies. Every figure here is measured from the save —
+// nothing is estimated, and a fresh save honestly reads zero rather than inventing a career.
+const hms = (s) => {
+  s = Math.round(s || 0);
+  const h = Math.floor(s / 3600), m = Math.floor((s % 3600) / 60);
+  return h ? `${h}h ${String(m).padStart(2, '0')}m` : `${m}m ${String(s % 60).padStart(2, '0')}s`;
+};
+const num = (n) => Math.round(n || 0).toLocaleString();
+export function renderNumbers(save) {
+  ensureTrophies(save);
+  const L = save.lifetime, done = save.done || {};
+  const ids = Object.keys(done);
+  const book = (pred) => { const all = JOBS.filter(pred); return [all.filter(j => done[j.id]).length, all.length]; };
+  const [mainD, mainT] = book(j => !j.odd && !j.tour && !j.goofy);
+  const [oddD, oddT] = book(j => j.odd);
+  const [tourD, tourT] = book(j => j.tour);
+  const [gooD, gooT] = book(j => j.goofy);
+  // a lawn is about 300 m² — the unit the job is actually measured in
+  const lawns = (L.area / 300);
+  const gearJobs = L.gearJobs || {};
+  const favGear = Object.keys(gearJobs).sort((a, b) => gearJobs[b] - gearJobs[a])[0];
+  const big = (v, label) => `<div class="numcell"><div class="numv">${v}</div><div class="numl">${label}</div></div>`;
+  let h = `<div class="numgrid">
+    ${big(num(L.area) + ' m²', 'grass cut')}
+    ${big(hms(L.time), 'on the clock')}
+    ${/* ⚠️ not num()/10 — toLocaleString puts a comma in past 10,000 and the divide gives NaN */''}
+    ${big((L.dist / 1000).toFixed(1) + ' km', 'walked behind a mower')}
+    ${big(ids.length + '/' + JOBS.length, 'pages inked')}
+  </div>
+  <div class="pegnote">That is ${lawns < 1 ? 'not quite one lawn' : lawns.toFixed(1) + ' front lawns'}, at three hundred square metres a lawn.</div>`;
+
+  h += `<div class="blockhead">The Books</div>`;
+  for (const [nm, d, t] of [['The Route', mainD, mainT], ['The Odd Jobs', oddD, oddT],
+                            ['The Wider Job Book', tourD, tourT], ['The Odd Sizes', gooD, gooT]]) {
+    h += `<div class="jobrow"><div class="st" style="${d >= t ? 'color:#c0392b' : ''}">${d >= t ? '✔' : '▢'}</div>
+      <div class="who"><div class="nm">${nm}</div>
+        <span class="margin"><span class="numbar"><i style="width:${t ? (d / t * 100).toFixed(0) : 0}%"></i></span></span></div>
+      <div class="meta">${d}/${t}</div></div>`;
+  }
+
+  h += `<div class="blockhead">The Tallies</div>`;
+  const tally = [
+    ['Bags tipped out', num(L.bags)],
+    ['Things found in the grass', num((save.pegboard || []).length)],
+    ['Junk in the jar', num(save.jar)],
+    ['Jobs where nothing was missed', num(L.perfectFinds)],
+    ['Best pattern score', L.patternBest ? L.patternBest + '/100' : '—'],
+    ['Trophies on the shelf', `${(save.trophies || []).length}/${TROPHIES.length}`],
+    ['The one you reach for', favGear ? `${GEARS[favGear].name} (${gearJobs[favGear]} job${gearJobs[favGear] === 1 ? '' : 's'})` : '—'],
+  ];
+  for (const [k, v] of tally) h += `<div class="jobrow"><div class="who"><div class="nm">${k}</div></div><div class="meta">${v}</div></div>`;
+
+  h += `<div class="blockhead">Page by Page</div>`;
+  if (!ids.length) h += `<div class="pegnote">Nothing here yet. The first page fills itself in.</div>`;
+  for (const j of JOBS) {
+    const d = done[j.id]; if (!d) continue;
+    const bits = [d.plays > 1 ? `${d.plays} visits` : '1 visit'];
+    if (d.time > 0) bits.push(`best ${hms(d.time)}`);   // a pre-v1.31 row has no time; don't print "0m 00s"
+    if (d.area) bits.push(`${num(d.area)} m²`);
+    if (d.pattern) bits.push(`pattern ${d.pattern}`);
+    if (d.gear && GEARS[d.gear]) bits.push(GEARS[d.gear].name);
+    h += `<div class="jobrow"><div class="st" style="color:#c0392b">✔</div>
+      <div class="who"><div class="nm">${j.name}</div><span class="margin">${bits.join(' · ')}</span></div>
+      <div class="meta">${d.found || 0} found</div></div>`;
+  }
+  $('numbers-list').innerHTML = h;
 }
 // The shelf in the garage: what you've earned, and the paint it came with. Locked rows
 // still show their name and how to get them — nothing here is a secret, it's a to-do list.
