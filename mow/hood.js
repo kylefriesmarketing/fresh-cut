@@ -328,6 +328,99 @@ const TOWN = {
   },
 };
 
+// ---- WHAT MAKES A ROOM A ROOM ----
+// The indoor maps had four walls, a ceiling, a dado and a window: they read as "indoors"
+// and nothing more. A box with a window is still a box. What says *room* is the stuff a
+// room can't be without — a way out, something overhead making the light, and things hung
+// on the walls at human heights. All authored per map through `def.room`.
+function dressRoom(room, R, W, H, cx, cz, wh, m, skirtC) {
+  const total = W + m * 2, deep = H + m * 2;
+  const trim = R.trim ?? skirtC, wallIn = { n: -m + 0.36, s: H + m - 0.36, w: -m + 0.36, e: W + m - 0.36 };
+  // cornice where the wall meets the ceiling, and a dark contact line where it meets the floor
+  for (const [bx, bz, bw, bd] of [[cx, -m + 0.5, total, 0.5], [cx, H + m - 0.5, total, 0.5]]) {
+    room.add(box(bw, 0.30, bd, trim, bx, wh - 0.16, bz));
+    room.add(box(bw, 0.10, bd * 0.7, 0x2e2820, bx, 0.05, bz));
+  }
+  for (const sx of [-m + 0.5, W + m - 0.5]) {
+    room.add(box(0.5, 0.30, deep, trim, sx, wh - 0.16, cz));
+    room.add(box(0.35, 0.10, deep, 0x2e2820, sx, 0.05, cz));
+  }
+  // ---- the way out. A room you cannot leave is a box with a rug in it. ----
+  const dh = wh * 0.62, dw = dh * 0.42, dz = cz + (R.doorZ ?? -H * 0.18);
+  const dx = R.doorSide === 'e' ? wallIn.e : wallIn.w, inward = R.doorSide === 'e' ? -1 : 1;
+  room.add(box(0.34, dh + 0.5, dw + 0.7, trim, dx, (dh + 0.5) / 2, dz));            // architrave
+  room.add(box(0.22, dh, dw, R.door ?? 0x6f5540, dx + inward * 0.12, dh / 2, dz));  // the leaf
+  room.add(box(0.10, dh * 0.34, dw * 0.62, R.doorPanel ?? 0x5e4736, dx + inward * 0.22, dh * 0.32, dz));  // its panels
+  room.add(box(0.10, dh * 0.26, dw * 0.62, R.doorPanel ?? 0x5e4736, dx + inward * 0.22, dh * 0.72, dz));
+  room.add(sph(0.13, 0xd9b44a, dx + inward * 0.26, dh * 0.47, dz + dw * 0.34, 8));  // handle
+  room.add(box(0.08, 0.34, 0.24, 0xf0ead8, dx + inward * 0.14, dh * 0.62, dz - dw * 0.95)); // light switch
+  // ---- things on the walls, at the heights people hang things ----
+  const picW = R.picC || [0x8a6a4a, 0x6f7a63, 0x9a8b74];
+  const hang = (x, z, ry, w2, h2, i) => {
+    const f = new THREE.Group(); f.position.set(x, wh * 0.55, z); f.rotation.y = ry;
+    f.add(box(0.16, h2 + 0.26, w2 + 0.26, picW[i % picW.length], 0, 0, 0));
+    f.add(box(0.08, h2, w2, R.picInk ?? 0xe4dcc4, 0.10, 0, 0));
+    room.add(f);
+  };
+  const nPic = R.pics ?? 3;
+  for (let i = 0; i < nPic; i++) {
+    const t = (i + 1) / (nPic + 1);
+    if (i % 2 === 0) hang(wallIn.w, cz + (t - 0.5) * H * 1.4, 0, 1.5 + (i % 3) * 0.5, 1.1 + (i % 2) * 0.6, i);
+    else hang(cx + (t - 0.5) * W * 1.4, wallIn.s, Math.PI / 2, 1.7, 1.2, i);
+  }
+  if (R.clock !== false) {                                   // and a clock, because rooms have one
+    // ⚠️ no group rotation here. Rotating it π put the hands (local −x) INTO the wall, and
+    // the clock rendered as a plain white disc — the face is symmetric, so it needs none.
+    const c = new THREE.Group(); c.position.set(wallIn.e, wh * 0.62, cz + H * 0.2);
+    const face = cyl(0.9, 0.9, 0.16, 0xf4eedd, 0, 0, 0, 14); face.rotation.z = Math.PI / 2; c.add(face);
+    for (const [len, ang] of [[0.42, -0.7], [0.66, 1.9]]) {
+      const hd = new THREE.Group(); hd.position.set(-0.1, 0, 0); hd.rotation.x = ang;
+      hd.add(box(0.06, len, 0.09, 0x3a3a36, 0, len / 2, 0)); c.add(hd);
+    }
+    room.add(c);
+  }
+  // ---- the light, which is the thing the room is actually lit by ----
+  const lamp = new THREE.Group(); lamp.position.set(cx, 0, cz + (R.lampZ ?? 0));
+  const K = R.lamp || 'dome';
+  if (K === 'strip') {                                       // club-room fluorescents
+    for (const sx of [-W * 0.22, W * 0.22]) {
+      lamp.add(box(1.1, 0.34, H * 0.5, 0xcfd4d2, sx, wh - 0.36, 0));
+      lamp.add(box(0.9, 0.10, H * 0.48, 0xfff6d8, sx, wh - 0.56, 0));
+    }
+  } else if (K === 'shade') {
+    // ⚠️ the long low shade over a table — at W*0.58 and wh*0.64 this spanned half the room
+    // and read as a structural BEAM across the top of frame, not a light. Keep it short and
+    // keep it up: a lamp is small and far away, or it stops being a lamp.
+    const L = Math.min(W * 0.34, 7);
+    for (const sz of [-L * 0.36, L * 0.36]) lamp.add(cyl(0.05, 0.05, wh * 0.2, 0x3a3a36, sz, wh - wh * 0.1, 0, 5));
+    lamp.add(box(L, 0.42, 1.2, R.lampC ?? 0x2f5b3f, 0, wh * 0.80, 0));
+    lamp.add(box(L * 0.94, 0.10, 1.05, 0xfff2c8, 0, wh * 0.766, 0));
+  } else if (K === 'flush') {                                // a kitchen ceiling light
+    lamp.add(cyl(1.1, 1.3, 0.34, 0xf4f0e2, 0, wh - 0.2, 0, 14));
+    lamp.add(cyl(1.0, 1.0, 0.10, 0xfff6d8, 0, wh - 0.38, 0, 14));
+  } else {                                                   // a pendant on a flex
+    lamp.add(cyl(0.05, 0.05, wh * 0.26, 0x2e2820, 0, wh - wh * 0.13, 0, 5));
+    lamp.add(cyl(0.32, 1.25, 0.95, R.lampC ?? 0xd8a23f, 0, wh * 0.70, 0, 14));
+    lamp.add(cyl(1.2, 1.2, 0.10, 0xfff2c8, 0, wh * 0.657, 0, 14));
+  }
+  lamp.traverse(o => { if (o.isMesh) o.castShadow = false; });
+  brighten(lamp, 0.62);                                      // it is the light source; it reads brighter
+  // ⚠️ keepMat, or the room's own brighten() pass runs afterwards and stomps the lamp back
+  // down to wall brightness — the same guard street.js uses for its window materials.
+  lamp.traverse(o => { if (o.isMesh) o.userData.keepMat = true; });
+  room.add(lamp);
+  // ---- curtains, so the window is a window and not a hole ----
+  if (R.window !== false) {
+    const winW = Math.min(9, W * 0.4), wy = wh * 0.68;
+    room.add(box(winW + 2.2, 0.22, 0.22, trim, cx, wy + 1.95, -m + 0.3));           // the rail
+    for (const sx of [-1, 1]) {                                                     // drapes, not posts
+      const cur = box(winW * 0.40, 3.7, 0.30, R.curtain ?? 0xb0a48c, cx + sx * (winW * 0.66), wy + 0.05, -m + 0.34);
+      cur.rotation.z = sx * 0.015; room.add(cur);
+      room.add(box(winW * 0.42, 0.3, 0.34, R.curtain ?? 0xb0a48c, cx + sx * (winW * 0.66), wy + 1.78, -m + 0.34));
+    }
+  }
+}
+
 // The heroes are built by both paths — the indoor rooms open a real window in the north
 // wall (v1.26) and used to look out at NOTHING, because that branch returns early.
 function buildHeroes(root, def, cx, cz) {
@@ -493,6 +586,7 @@ export function buildHood(scene, def, world, quality) {
     }
     const ceil = new THREE.Mesh(new THREE.PlaneGeometry(W + m * 2, H + m * 2), mat(ceilC));
     ceil.rotation.x = Math.PI / 2; ceil.position.set(cx, wh, cz); room.add(ceil);
+    dressRoom(room, R, W, H, cx, cz, wh, m, skirtC);   // a door, a light, and things on the walls
     room.traverse(o => { if (o.isMesh) o.castShadow = false; });
     brighten(room, R.lift ?? 0.34); root.add(room);
     buildHeroes(root, def, cx, cz);      // the thing beyond the window — the whole point of opening one

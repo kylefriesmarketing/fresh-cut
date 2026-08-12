@@ -15,18 +15,47 @@ Deploy = copy the whole folder to any static host (GitHub Pages works as-is).
 
 ## ⏭️ NEXT SESSION — what's open
 
-1. **The indoor rooms are still plain walls** (`hood.indoor`, v1.19's note). They now have a
-   real window with a set-piece beyond it, but the walls themselves want a picture rail, a
-   light fitting, a skirting shadow — something that says *room* rather than *box*.
-2. **Notebook stats page** (from the original backlog — lifetime m², total time, finds,
+1. **Notebook stats page** (from the original backlog — lifetime m², total time, finds,
    per-job bests; the data is already in `fc-save`).
-3. A trailer/screenshot pass would be cheap now: `__fc.shoot(name, port)` photographs the
-   game from inside it, `__fc.grid`-style montages make a review one look instead of six,
-   and the heroes finally give every map a skyline worth pointing a camera at.
-4. **The rooftop hospital still competes with the city ring.** It's the one hero that isn't
+2. A trailer/screenshot pass would be cheap now: `__fc.shoot(name, port)` photographs the
+   game from inside it, montages make a review one look instead of six, and the heroes
+   finally give every map a skyline worth pointing a camera at.
+3. **The rooftop hospital still competes with the city ring.** It's the one hero that isn't
    distinct — a slab among slabs, six floors up. It carries a big red cross now and that is
    probably as far as massing can take it; if it ever matters, the answer is to make the
    ring towers on that map plainer, not the hospital louder.
+4. The four indoor rooms are dressed now, but they're still *empty* rooms — no furniture
+   against the walls. The lot itself is the carpet, so anything added has to sit outside the
+   mowable area; a sideboard or a bookcase against the south wall would be the next thing.
+
+## v1.30 (2026-08-11) — the indoor rooms are rooms now
+
+v1.19 shipped four walls, a ceiling and a skirting board and flagged them as "plain flat
+walls: they read as indoors but want a window or picture rail to be good." v1.26 gave them
+the window. This gives them everything else, via one `dressRoom()` in hood.js driven per map
+from `def.room` — **a way out, something overhead making the light, and things hung at the
+heights people hang things.**
+
+- **A door** — architrave, leaf, two panels, a handle and a light switch beside it, on the
+  west wall (`doorSide: 'e'` moves it). A room you cannot leave is a box with a rug in it.
+- **The light fitting**, four kinds, authored per room: `dome` (the 1974 lounge's amber
+  pendant on a visible flex), `strip` (the model railway club's fluorescent battens), `shade`
+  (the social club's long low table shade) and `flush` (the kitchen ceiling light).
+  ⚠️ The lamp is `brighten()`-ed to 0.62 and then tagged **`userData.keepMat`**, or the room's
+  own brighten pass runs afterwards and stomps it back down to wall brightness — the same
+  guard street.js uses for its window materials.
+- **Framed pictures** at eye height, a **wall clock**, a **cornice** where wall meets ceiling,
+  a **dark contact line** where it meets the floor, and **curtains** either side of the window
+  so it reads as a window rather than a hole.
+- ⚠️ **The snooker shade was a ceiling beam.** At `W*0.58` long and `wh*0.64` high it spanned
+  half the room and filled the top of frame as a structural member. A lamp has to be small
+  and high or it stops reading as a lamp: `min(W*0.34, 7)` at `wh*0.80`.
+- ⚠️ **The clock rendered as a plain white disc** — the group was rotated π, which put the
+  hands (at local −x) inside the wall. The face is symmetric; it needs no rotation.
+
+Per-room character lives entirely in `def.room`: the shag lounge is brown with four gold
+frames, the railway club is hall-green with five, the social club is bottle-green with its
+door on the east wall, and Theo's kitchen is pale blue with almost nothing on the walls.
 
 ## v1.29 (2026-08-11) — the machines sound like themselves, and the numbers are honest
 
