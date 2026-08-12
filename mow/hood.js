@@ -328,6 +328,101 @@ const TOWN = {
   },
 };
 
+// ---- FURNITURE ----
+// The rooms were dressed but EMPTY. The lot itself is the carpet, so anything standing in a
+// room has to live in the 3.5-unit band between the edge of the lawn and the wall.
+// ⚠️ The player is hard-clamped to the lot (`game.js` ~132), so none of this needs a collider,
+// a no-grass footprint or a trim ring — it is pure view, exactly like the room around it.
+// ⚠️ SCALE: these rooms are a normal room seen by a mower-sized person — wall height ~7 units
+// is about 2.4 m, so a unit is roughly a third of a metre. A sideboard is 2.2 units tall, not
+// 1. Build at s=1 for a 7-unit room; the shorter rooms pass s ≈ 0.9.
+// Every piece is built with its BACK toward −z: north wall rot 0, south π, west π/2, east −π/2.
+const FURN = {
+  sideboard(g, s, o) {
+    const c = o.c || 0x7a5236, L = 4.6 * s;
+    g.add(box(L, 1.5 * s, 1.25 * s, c, 0, 1.15 * s, 0));
+    g.add(box(L + 0.22 * s, 0.16 * s, 1.4 * s, o.top || 0x8a6242, 0, 1.98 * s, 0));
+    for (let i = 0; i < 3; i++) {
+      // ⚠️ the body is 1.25 deep, so its face is at 0.625 — drawer fronts at 0.65 were
+      // 25mm proud and z-fought into invisibility. Stand them properly off the carcass.
+      const x = (i - 1) * L * 0.31;
+      g.add(box(L * 0.27, 1.0 * s, 0.10 * s, o.face || 0x6b4830, x, 1.2 * s, 0.70 * s));
+      g.add(box(L * 0.13, 0.10 * s, 0.10 * s, 0xd9c88a, x, 1.2 * s, 0.79 * s));
+    }
+    for (const sx of [-L * 0.44, L * 0.44]) for (const sz of [-0.42 * s, 0.42 * s])
+      g.add(box(0.14 * s, 0.5 * s, 0.14 * s, 0x4a3626, sx, 0.25 * s, sz));
+  },
+  armchair(g, s, o) {
+    const c = o.c || 0x6f7a4a;
+    g.add(box(2.1 * s, 0.6 * s, 2.0 * s, c, 0, 1.05 * s, 0));                 // cushion
+    g.add(box(2.1 * s, 1.7 * s, 0.5 * s, c, 0, 1.7 * s, -0.85 * s));          // back
+    for (const sx of [-1.1 * s, 1.1 * s]) g.add(box(0.4 * s, 0.8 * s, 2.0 * s, c, sx, 1.15 * s, 0));
+    for (const sx of [-0.85 * s, 0.85 * s]) for (const sz of [-0.8 * s, 0.8 * s])
+      g.add(box(0.16 * s, 0.75 * s, 0.16 * s, 0x4a3626, sx, 0.38 * s, sz));
+  },
+  tv(g, s, o) {                                                              // a boxy set on legs
+    g.add(box(2.2 * s, 1.7 * s, 1.4 * s, o.c || 0x6b4830, 0, 1.9 * s, 0));
+    g.add(box(1.6 * s, 1.25 * s, 0.10 * s, 0x2b3138, -0.15 * s, 1.95 * s, 0.72 * s));
+    for (let i = 0; i < 2; i++) {
+      const d = cyl(0.13 * s, 0.13 * s, 0.09 * s, 0xd9c88a, 0.82 * s, 2.2 * s - i * 0.42 * s, 0.72 * s, 8);
+      d.rotation.x = Math.PI / 2; g.add(d);
+    }
+    for (const sx of [-0.8 * s, 0.8 * s]) for (const sz of [-0.5 * s, 0.5 * s])
+      g.add(box(0.15 * s, 1.05 * s, 0.15 * s, 0x4a3626, sx, 0.52 * s, sz));
+    g.add(cyl(0.04 * s, 0.04 * s, 1.8 * s, 0x8a8f94, 0.7 * s, 3.6 * s, 0, 5));  // the aerial
+  },
+  trestle(g, s, o) {                                                         // a folding table with crates
+    const L = 5.2 * s;
+    g.add(box(L, 0.16 * s, 1.6 * s, o.top || 0xa8916a, 0, 2.15 * s, 0));
+    for (const sx of [-L * 0.4, L * 0.4]) for (const d of [-1, 1]) {
+      const lg = box(0.14 * s, 2.1 * s, 0.14 * s, 0x6b5a42, sx + d * 0.24 * s, 1.05 * s, d * 0.55 * s);
+      lg.rotation.x = d * 0.14; g.add(lg);
+    }
+    for (let i = 0; i < 3; i++)
+      g.add(box(1.0 * s, 0.75 * s, 1.0 * s, [0x8a6a4a, 0x9a8b74, 0x6f7a63][i], (i - 1) * 1.5 * s, 2.6 * s, 0));
+  },
+  shelf(g, s, o) {                                                           // shelving, with things on it
+    const W2 = 3.4 * s, H2 = 5.0 * s, c = o.c || 0x6b5a42;
+    for (const sx of [-W2 / 2, W2 / 2]) g.add(box(0.18 * s, H2, 1.1 * s, c, sx, H2 / 2, 0));
+    for (let i = 0; i < 4; i++) g.add(box(W2, 0.14 * s, 1.1 * s, c, 0, 0.35 * s + i * 1.5 * s, 0));
+    const cols = [0x8a3f3f, 0x3f5d55, 0x7a4a33, 0xd9c88a, 0x415a78];
+    for (let i = 0; i < 3; i++) for (let k = 0; k < 6; k++)
+      g.add(box(0.26 * s, 0.85 * s, 0.8 * s, cols[(i * 6 + k) % 5], -W2 * 0.4 + k * 0.32 * s, 0.85 * s + i * 1.5 * s, 0));
+  },
+  bench(g, s, o) {                                                           // fixed seating along a wall
+    const L = 5.0 * s, c = o.c || 0x7a3f3a;
+    g.add(box(L, 0.45 * s, 1.5 * s, c, 0, 1.25 * s, 0));
+    g.add(box(L, 1.6 * s, 0.4 * s, c, 0, 2.1 * s, -0.75 * s));
+    g.add(box(L * 0.98, 1.0 * s, 1.3 * s, 0x4a3626, 0, 0.5 * s, 0));
+  },
+  counter(g, s, o) {                                                         // kitchen base units
+    const L = 5.0 * s;
+    g.add(box(L, 2.3 * s, 1.5 * s, o.c || 0xd8dee2, 0, 1.15 * s, 0));
+    g.add(box(L + 0.16 * s, 0.18 * s, 1.65 * s, o.top || 0x8a8f94, 0, 2.4 * s, 0));
+    for (let i = 0; i < 3; i++) {
+      const x = (i - 1) * L * 0.32;
+      g.add(box(L * 0.28, 1.9 * s, 0.08 * s, o.face || 0xc4ccd2, x, 1.15 * s, 0.78 * s));
+      g.add(box(L * 0.19, 0.09 * s, 0.09 * s, 0x9aa0a6, x, 1.95 * s, 0.86 * s));
+    }
+    g.add(box(0.75 * s, 0.55 * s, 0.6 * s, 0xf0ead8, L * 0.3, 2.77 * s, 0));   // something left on the top
+  },
+  fridge(g, s, o) {
+    g.add(box(1.9 * s, 5.0 * s, 1.7 * s, o.c || 0xe8eef0, 0, 2.5 * s, 0));
+    g.add(box(1.94 * s, 0.08 * s, 1.74 * s, 0xb0b6bb, 0, 3.4 * s, 0));          // the freezer split
+    g.add(box(0.12 * s, 1.4 * s, 0.12 * s, 0x9aa0a6, 0.75 * s, 2.2 * s, 0.75 * s));
+    g.add(box(0.12 * s, 0.7 * s, 0.12 * s, 0x9aa0a6, 0.75 * s, 4.1 * s, 0.75 * s));
+  },
+};
+function placeFurniture(room, R) {
+  for (const f of R.furn || []) {
+    if (!FURN[f.k]) continue;
+    const g = new THREE.Group();
+    FURN[f.k](g, f.s || 1, f);
+    g.position.set(f.x, 0, f.z); g.rotation.y = f.rot || 0;
+    room.add(g);
+  }
+}
+
 // ---- WHAT MAKES A ROOM A ROOM ----
 // The indoor maps had four walls, a ceiling, a dado and a window: they read as "indoors"
 // and nothing more. A box with a window is still a box. What says *room* is the stuff a
@@ -409,6 +504,7 @@ function dressRoom(room, R, W, H, cx, cz, wh, m, skirtC) {
   // down to wall brightness — the same guard street.js uses for its window materials.
   lamp.traverse(o => { if (o.isMesh) o.userData.keepMat = true; });
   room.add(lamp);
+  placeFurniture(room, R);   // and the things that stand in it, out in the margin band
   // ---- curtains, so the window is a window and not a hole ----
   if (R.window !== false) {
     const winW = Math.min(9, W * 0.4), wy = wh * 0.68;

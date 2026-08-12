@@ -24,9 +24,8 @@ Deploy = copy the whole folder to any static host (GitHub Pages works as-is).
    distinct — a slab among slabs, six floors up. It carries a big red cross now and that is
    probably as far as massing can take it; if it ever matters, the answer is to make the
    ring towers on that map plainer, not the hospital louder.
-4. The four indoor rooms are dressed now, but they're still *empty* rooms — no furniture
-   against the walls. The lot itself is the carpet, so anything added has to sit outside the
-   mowable area; a sideboard or a bookcase against the south wall would be the next thing.
+4. The indoor rooms have furniture against the walls now, but nothing on the **ceiling** other
+   than the light, and no rug/threshold where the carpet meets the skirting. Small stuff.
 
 ## v1.30 (2026-08-11) — the indoor rooms are rooms now
 
@@ -56,6 +55,27 @@ heights people hang things.**
 Per-room character lives entirely in `def.room`: the shag lounge is brown with four gold
 frames, the railway club is hall-green with five, the social club is bottle-green with its
 door on the east wall, and Theo's kitchen is pale blue with almost nothing on the walls.
+
+**And then the furniture** (`FURN` + `def.room.furn`), because a dressed room with nothing
+standing in it is still a stage set. Eight pieces — `sideboard` `armchair` `tv` `trestle`
+`shelf` `bench` `counter` `fridge` — placed by x/z in the **3.5-unit band between the edge of
+the lawn and the wall**, which is the only floor a room has that isn't the mowable lot.
+The lounge gets a sideboard, a boxy TV with an aerial, two armchairs and a bookcase; the
+railway club gets trestle tables with crates on them; the social club gets bench seating;
+Theo's kitchen gets base units and a fridge.
+
+- ⚠️ **The player is hard-clamped to the lot** (`game.js` ~132), so none of this needs a
+  collider, a no-grass footprint or a trim ring. It is pure view, like the room around it.
+- ⚠️ **SCALE.** These rooms are a normal room seen by a mower-sized person: a 7-unit wall is
+  about 2.4 m, so a unit is roughly a third of a metre and a sideboard is **2.2 units tall,
+  not 1**. Built at s=1 for a 7-unit room; the shorter rooms pass s ≈ 0.85–0.95. The
+  furniture is *meant* to loom — you are a doll mowing the carpet.
+- ⚠️ The sideboard's drawer fronts sat at z 0.65 on a carcass whose face is at 0.625 — 25 mm
+  proud, so they z-fought into invisibility and the piece rendered as a plain slab.
+- ⚠️⚠️ **`node --check` REPORTED OK ON A BROKEN ES MODULE.** A patch left a room object with
+  no comma before its `furn` key — `--check` passed it twice, and the real error only showed
+  up on `import()`: *"Unexpected identifier 'furn'"*. **Validate these data files by importing
+  them** (`node --input-type=module -e "import('./mow/goofy.js')…"`), not with `--check`.
 
 ## v1.29 (2026-08-11) — the machines sound like themselves, and the numbers are honest
 
