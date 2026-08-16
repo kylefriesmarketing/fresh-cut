@@ -170,7 +170,7 @@ export const TOUR = [
     blurb: "Six floors up, a lawn the size of a tennis court, laid over the roof of the old mill offices because someone read an article in 1998. It has planters, vents, a very short parapet, and the best breeze in town. The mower came up in the freight lift and it is going back down the same way.",
     pop: 'six floors up',
     lot: { w: 22, h: 16 }, seed: 605, fence: 'none', gate: { x: 2.4, w: 1.6 }, hood: 'city',
-    hero: [{ k: 'hospital', x: -34, z: 48, s: 1.0 }, { k: 'civic', x: 44, z: 40, s: 0.9 }],
+    hero: [{ k: 'hospital', x: -30, z: 44, s: 1.1, rot: 3.1416 }, { k: 'civic', x: 44, z: 40, s: 0.9 }],
     palette: { arc: true, sky: 0xdfe9f4, fog: 0xc9d6e2, hemi: 0xd8e6f2, sun: 0xfff4e0, hemiI: 0.90, sunI: 1.62, fogNear: 38, fogFar: 175 },
     terrain: { features: [{ k: 'mound', x: 11, z: 8, r: 11, h: 0.35 }] },   // the roof falls away to its drains
     tiers: [{ t: 'base', tier: 2 }, { t: 'rect', x: 14, z: 9, w: 8, h: 7, tier: 3 }],

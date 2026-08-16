@@ -785,12 +785,18 @@ export function buildHood(scene, def, world, quality) {
 
   const ring = new THREE.Group();
   const rings = Math.round(52 * far * (P.ringDens || 1));
+  // ⚠️ the ring is random and the heroes are authored, so a ring tower (or a 3-scale tree)
+  // could land squarely in FRONT of the landmark the map is named for. Keep a clear yard
+  // around every hero — the hospital sits INSIDE the city ring band, so this is what
+  // guarantees its cross is visible at all.
+  const heroSpots = (def.hero || []).map(h => ({ x: cx + (h.x || 0), z: cz + (h.z || 0) }));
   for (let i = 0; i < rings; i++) {
     const a = (i / rings) * 6.283 + rng() * 0.06;
     const rad = (P.ringNear || 62) + rng() * 34;
     const x = cx + Math.sin(a) * rad, z = cz + Math.cos(a) * rad;
     // don't crowd the road corridor in front
     if (z < -6 && z > -22 && Math.abs(x - cx) < W * 0.8) continue;
+    if (heroSpots.some(s => Math.hypot(x - s.x, z - s.z) < 16)) continue;
     const kind = rng();
     if (P.far.includes('water') && z < cz - 30) continue;    // that direction is the reservoir
     if (P.far.includes('towers')) {                          // a real skyline, seen from a roof
@@ -798,8 +804,18 @@ export function buildHood(scene, def, world, quality) {
       const w = P.w[0] + rng() * (P.w[1] - P.w[0]), h = P.h[0] + rng() * (P.h[1] - P.h[0]), d = 8 + rng() * 8;
       g.add(box(w, h, d, pick(P.body, rng), 0, h / 2, 0));
       g.add(box(w + 0.6, 0.5, d + 0.6, pick(P.roof, rng), 0, h + 0.25, 0));
-      const winC = 0x9db4c4;                                  // window bands, so they read as buildings
-      for (let f = 1; f * 2.4 < h - 1; f++) g.add(box(w * 0.86, 0.7, d + 0.05, winC, 0, f * 2.4, 0));
+      // ⚠️ These used to wear pale HORIZONTAL window bands — the hospital hero's exact
+      // language, so from the roof at Vance & Co. the hospital was one slab among slabs
+      // and no amount of red cross fixed it. Offices now wear VERTICAL curtain-wall
+      // glazing in dark glass; the hospital keeps the pale bands, and is the only
+      // building on that skyline wearing them. Differentiate the crowd, not the hero.
+      const glass = pick([0x3f4a54, 0x46525e, 0x39434c], rng);
+      const span = w - 2.4, nCol = Math.max(3, Math.round(span / 2.0));
+      for (let k = 0; k < nCol; k++) {
+        const gx = -w / 2 + 1.2 + (k + 0.5) * (span / nCol);   // inset, so the SIDES stay plain body
+        g.add(box(0.9, h - 2.4, d + 0.05, glass, gx, h / 2 + 0.5, 0));
+      }
+      if (rng() < 0.4) g.add(box(w * 0.4, 1.2, d * 0.5, 0x6b6258, w * 0.14, h + 1.1, 0));  // rooftop plant on some
       g.position.set(x, 0, z); g.rotation.y = rng() * 6.283; ring.add(g);
       continue;
     }

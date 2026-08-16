@@ -13,17 +13,37 @@ Deploy = copy the whole folder to any static host (GitHub Pages works as-is).
 **F** high-cut lever (jungle grass needs it first) · hold **LMB** to trim ·
 **R** Pop's radio · **Z** zone list · **L** last-blade glow · **Esc** pause.
 
-## ⏭️ NEXT SESSION — what's open
+## ⏭️ NEXT SESSION — the backlog is clear
 
-1. A trailer/screenshot pass would be cheap now: `__fc.shoot(name, port)` photographs the
-   game from inside it, montages make a review one look instead of six, and the heroes
-   finally give every map a skyline worth pointing a camera at.
-3. **The rooftop hospital still competes with the city ring.** It's the one hero that isn't
-   distinct — a slab among slabs, six floors up. It carries a big red cross now and that is
-   probably as far as massing can take it; if it ever matters, the answer is to make the
-   ring towers on that map plainer, not the hospital louder.
-4. The indoor rooms have furniture against the walls now, but nothing on the **ceiling** other
-   than the light, and no rug/threshold where the carpet meets the skirting. Small stuff.
+Everything on the standing list is done: campaign heroes + palettes (v1.28), the mower pass
+(v1.28), engine voices (v1.29), indoor rooms dressed and furnished (v1.30), the stats page
+(v1.31), the indoor-surround bug (v1.32), the rooftop hospital (v1.33). Kyle explicitly
+dropped the trailer pass (2026-08-12). **Next work should come from playtesting** — every
+open item so far has come from either Kyle playing or a screenshot pass, not from the list.
+
+## v1.33 (2026-08-12) — the hospital is THE building now
+
+The last open visual item: on the roof at Vance & Co. the hospital hero was one slab among
+slabs, and v1.29's big red cross didn't fix it. The note said the answer was to make the
+ring towers plainer, not the hospital louder — half right. What actually did it:
+
+- **The city ring towers stopped wearing the hospital's language.** They had pale HORIZONTAL
+  window bands — exactly the hospital's dressing. Offices now wear **vertical curtain-wall
+  glazing in dark glass** (inset from the ends, so their sides stay plain body), and the
+  hospital is the only building on that skyline in pale bands. Differentiate the crowd, not
+  the hero. Some towers get a rooftop plant box for a varied roofline.
+- **The hospital faces the roof now.** It sits SOUTH of the lot, so its front — bands,
+  entrance, the big cross — pointed at the horizon. `rot: 3.1416` in the rooftop hero def,
+  plus a touch closer and bigger (x −30, z 44, s 1.1).
+- **The ring keeps a clear yard around every hero** (`heroSpots` check in the ring loop,
+  16 units). The ring is random and the heroes are authored, so a ring tower — or a
+  3-scale tree on any other map — could land squarely in front of the landmark the map is
+  named for. The hospital sits *inside* the city ring band; this is what guarantees its
+  cross is visible at all, and every map's heroes benefit.
+
+Verified by matched shots: the hospital reads instantly from the roof, the ring reads as
+offices from two directions, and the duplex hospital (suburb) is unchanged. 44/44 jobs,
+0 console errors.
 
 ## v1.32 (2026-08-12) — 🐛 there was a road, a pavement and five houses inside the lounge
 
