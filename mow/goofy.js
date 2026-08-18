@@ -202,7 +202,7 @@ export const GOOFY = [
     tiers: [{ t: 'base', tier: 4 }, { t: 'rect', x: 6, z: 6, w: 28, h: 8, tier: 3 }],
     props: [
       { k: 'booth', x: 3, z: 10, s: 3.4, rot: 1.571 }, { k: 'booth', x: 37, z: 10, s: 3.4, rot: -1.571 },
-      { k: 'statue', x: 20, z: 2.4, s: 3 },
+      { k: 'statue', x: 26.5, z: 2.6, s: 3 },
       { k: 'planter', x: 10, z: 17.6, s: 2.6 }, { k: 'planter', x: 30, z: 17.6, s: 2.6 },
     ],
     zones: [

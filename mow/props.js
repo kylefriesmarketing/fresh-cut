@@ -764,6 +764,12 @@ export function buildYard(scene, def, grass, quality) {
     grass.trimBorder(0.28);
     world.gate = gate;
   }
+  // ⚠️ the authored gate must survive having no fence. world.gate was only set INSIDE the
+  // fence block, so every `fence: 'none'` map discarded its authored gate and spawned at
+  // the engine fallback (x 3) — the Welcome Mat authors its entrance at x 19 on a 40-wide
+  // lot, and the player stood face-first into the west ticket booth instead. Maps that
+  // author no gate at all keep the old fallback exactly.
+  if (!world.gate && def.gate) world.gate = def.gate;
 
   // --- props from the def ---
   for (const p of def.props || []) {

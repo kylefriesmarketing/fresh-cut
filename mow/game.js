@@ -57,6 +57,57 @@ export class Game {
     // pitch starts in mowing posture — eyes on the grass ahead of the deck, mower in frame
     this.p = { x: gate.x + (gate.w || 1.4) / 2, z: 2.0, y: 0, yaw: 0, pitch: -0.42, vx: 0, vz: 0 };
     this.p.y = this.terrain.heightAt(this.p.x, this.p.z);
+    // ⚠️ SPAWN FACES THE CLEAREST SIGHTLINE (v1.34, from the first-frame playtest). The
+    // gate is authored at the street and the house sits right behind it, so NINE jobs —
+    // pops, the finale, among them — opened with a wall or a door filling the whole first
+    // frame. Cast a fan of rays from the spawn; keep yaw 0 when it is already open
+    // (most maps — their openings were composed and must not change), otherwise turn to
+    // the longest clear line, preferring the smallest turn. Deterministic, no rng.
+    {
+      // ⚠️ exclude CIRCLES the spawn is inside or against — on twins the gate is UNDER the
+      // porch, whose collision circle then blocked every ray at its first step, ALL
+      // candidates tied at 0.8 and the tie kept yaw 0, wall and all. The porch you stand on
+      // is not an obstacle to seeing — and porches are always circles by design (v1.10).
+      // ⚠️ RECTS ARE NEVER EXEMPT: they are buildings. The first version exempted rects the
+      // spawn stood against, which filtered out the HOUSE ITSELF on coach and gary (spawn
+      // 0.42 from the wall) — the rays sailed through the building and the wall stayed.
+      // ⚠️ and only BUILDING-SCALE circles (r ≥ 1.2) count at all. The picker cannot know
+      // heights, so it turned away from Little Comberton's knee-high model sheds, and from
+      // the hedge maze — which is that map's composed opening, the whole joke of the page.
+      // Small circles are garden furniture; the failures this exists for are houses (rects)
+      // and the giant scaled booths.
+      const cs = this.world.colliders.filter(c => c.r >= 1.2 && Math.hypot(this.p.x - c.x, this.p.z - c.z) > c.r + 0.55);
+      const rs = this.world.rects || [];
+      const ray = (yaw) => {
+        const sx = Math.sin(yaw), sz = Math.cos(yaw);
+        for (let t = 0.8; t <= 14; t += 0.5) {
+          const px = this.p.x + sx * t, pz = this.p.z + sz * t;
+          if (px < 0.5 || px > def.lot.w - 0.5 || pz < 0.5 || pz > def.lot.h - 0.5) return t;
+          for (const c of cs) if (Math.hypot(px - c.x, pz - c.z) < c.r + 0.3) return t;
+          for (const r of rs) {
+            const qx = Math.max(r.x0, Math.min(r.x1, px)), qz = Math.max(r.z0, Math.min(r.z1, pz));
+            if (Math.hypot(px - qx, pz - qz) < 0.35) return t;
+          }
+        }
+        return 14;
+      };
+      // ⚠️ a FAN — and its AVERAGE, not its minimum. The FOV is 74°, so one centre ray
+      // threads past a house corner while the frame is still all wall; but min-over-fan
+      // fails the other way — the house is WIDE, so every candidate clipped a corner,
+      // every score tied at the first step and the tie kept yaw 0. A first frame is bad
+      // when it is ALL wall; a view down the side of the house that clips one corner is a
+      // fine view. Average of 5 rays across ±34°; keep yaw 0 unless it averages under 3.5
+      // (a porch at 4-5 units is a COMPOSED opening — duplex — and must not be turned).
+      const clear = (yaw) => (ray(yaw - 0.6) + ray(yaw - 0.3) + ray(yaw) + ray(yaw + 0.3) + ray(yaw + 0.6)) / 5;
+      if (clear(0) < 3.5) {
+        let best = 0, bestScore = -1;
+        for (const y of [0, 0.45, -0.45, 0.9, -0.9, 1.35, -1.35]) {
+          const s = clear(y) - Math.abs(y) * 0.4;   // a long view wins; a small turn breaks ties
+          if (s > bestScore) { bestScore = s; best = y; }
+        }
+        this.p.yaw = best;
+      }
+    }
     this.tool = 'mow'; this.highCut = false; this.load = 0; this.speedF = 0;
     this.mowerG = makeMower(this.gearKey, opts.paint || null); scene.add(this.mowerG);
     this.mowerOff = this.gearKey === 'rider' ? 0.4 : 0.86; // how far ahead of the player the mower rides

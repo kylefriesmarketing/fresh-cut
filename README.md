@@ -17,9 +17,59 @@ Deploy = copy the whole folder to any static host (GitHub Pages works as-is).
 
 Everything on the standing list is done: campaign heroes + palettes (v1.28), the mower pass
 (v1.28), engine voices (v1.29), indoor rooms dressed and furnished (v1.30), the stats page
-(v1.31), the indoor-surround bug (v1.32), the rooftop hospital (v1.33). Kyle explicitly
-dropped the trailer pass (2026-08-12). **Next work should come from playtesting** — every
-open item so far has come from either Kyle playing or a screenshot pass, not from the list.
+(v1.31), the indoor-surround bug (v1.32), the rooftop hospital (v1.33), the first-frame
+sweep (v1.34). Kyle explicitly dropped the trailer pass (2026-08-12). **Next work should
+come from playtesting** — every real find keeps coming from looking, not from the list.
+The full spawn-view contact sheet of all 44 jobs is reproducible in one console call
+(see v1.34's capture loop) — re-run it after any change to houses, gates or props.
+
+## v1.34 (2026-08-12) — the first frame of every job
+
+A systematic playtest: capture what the player actually sees the moment each of the 44 jobs
+opens (spawn position, spawn yaw — no teleporting, no pre-mowing), review every frame. It
+had never been done — every screenshot so far was aimed by hand — and it found real things:
+
+**1. Nine jobs opened with the camera jammed against a wall.** The gate is authored at the
+street and the house sits right behind it, so twins/coach/hendersons/rental/gary/missvi/
+foreclosure — and **pops, the finale** — opened on a wall or a door filling the whole frame.
+**The spawn now faces the clearest sightline** (game.js, right after `p` init): a fan of
+rays from the spawn; keep yaw 0 unless its 5-ray average is under 3.5 (a porch at 4–5 units
+is a *composed* opening — duplex — and must not be turned); otherwise turn to the longest
+average view, preferring the smallest turn. Deterministic, no rng, resume unaffected.
+The eight house maps now open looking down the side of the yard — grass, fence, street,
+the neighbourhood beyond — with the house framing the shot instead of filling it.
+
+Getting that rule right took four measured iterations, each with its own trap:
+- **One centre ray is too thin** — FOV is 74°, so a ray threads past the house corner while
+  the frame is still all wall.
+- **Min-over-fan is too pessimistic** — the house is wide, every candidate clipped a corner,
+  all scores tied at the first step and the tie kept yaw 0. A first frame is bad when it is
+  ALL wall; average the fan.
+- **Circles the spawn stands in must be exempt** — on twins the gate is UNDER the porch,
+  whose collision circle blocked every ray at its first step. But **rects are NEVER exempt**:
+  the first version exempted rects the spawn stood against, which filtered out the HOUSE
+  ITSELF on coach and gary (spawn 0.42 from the wall) and the rays sailed through it.
+- **Only building-scale circles (r ≥ 1.2) count at all** — the picker cannot know heights,
+  so it turned away from Little Comberton's knee-high model sheds, and from the hedge maze,
+  which is that map's composed opening. Small circles are garden furniture.
+
+**2. 🐛 `fence: 'none'` maps discarded their authored gate.** `world.gate` was only assigned
+inside the fence-building block, so every no-fence map spawned at the engine fallback (x 3).
+The Welcome Mat authors its entrance at x 19 on a 40-wide lot — the player actually stood
+face-first into the west ticket booth (2×2.3 m at s 3.4 = a red three-storey monolith, which
+I first blamed on the statue). Fixed in props.js: the authored gate survives having no
+fence; maps that author no gate keep the old fallback exactly. Doormat now opens mid-mat at
+dusk, which is the shot the map deserved.
+- ⚠️ Diagnosed with a **raycast through the offending pixel** (`Raycaster.setFromCamera` →
+  first hit's world position + bounds), not by guessing. Three wrong guesses preceded it.
+
+**3. The statue on the doormat moved off the gate line** (x 20 → 26.5) — with the real gate
+honoured it would have been half a metre in front of the spawn.
+
+Verified: 44/44 battery, save→resume byte-match on a turned map, 0 console errors, and the
+full 44-frame contact sheet re-shot twice — exactly the eight house maps turn, everything
+else keeps its composed opening, all five hood collider-scale checks passed on the way
+(collider radii DO scale with prop `s` — confirmed at props.js:780, not assumed).
 
 ## v1.33 (2026-08-12) — the hospital is THE building now
 
