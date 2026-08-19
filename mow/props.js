@@ -789,12 +789,34 @@ export function buildYard(scene, def, grass, quality) {
   }
 
   // --- sky + light ---
+  // ⚠️ THE GOLDEN HOUR NEVER REACHED THE SKY DOME (found on the 44-map golden-hour contact
+  // sheet, v1.35). applyLightPreset multiplies the sky material's colour over this gradient,
+  // and the gradient bakes BLUE — peach × blue is GREY-GREEN, so at warm 1 the dome went
+  // sage instead of gold while the sun disc glowed. A colour multiply cannot make gold out
+  // of blue, so the gradient itself has to warm: each stop lerps toward a NEUTRAL-PALE
+  // target — not orange, the material colour supplies the hue; the texture only has to stop
+  // fighting it. At warm 0 the paint is byte-identical to the old gradient.
   const sc = document.createElement('canvas'); sc.width = 16; sc.height = 256; const sx2 = sc.getContext('2d');
-  const gr = sx2.createLinearGradient(0, 0, 0, 256);
-  gr.addColorStop(0, '#5d9fc8'); gr.addColorStop(0.22, '#79b7d6'); gr.addColorStop(0.48, '#a9d4e8');
-  gr.addColorStop(0.66, '#cfe6ee'); gr.addColorStop(0.82, '#e8ecd2'); gr.addColorStop(1, '#f6e8c2');
-  sx2.fillStyle = gr; sx2.fillRect(0, 0, 16, 256);
+  const SKY_STOPS = [
+    [0x5d9fc8, 0xbcc4c8, 0], [0x79b7d6, 0xccd2d2, 0.22], [0xa9d4e8, 0xe0e2da, 0.48],
+    [0xcfe6ee, 0xeee8d6, 0.66], [0xe8ecd2, 0xf6ecd2, 0.82], [0xf6e8c2, 0xffe9c0, 1],
+  ];
+  const lerpHex = (a, b, t) => {
+    const ch = (sh) => Math.round(((a >> sh) & 255) + (((b >> sh) & 255) - ((a >> sh) & 255)) * t);
+    return `rgb(${ch(16)},${ch(8)},${ch(0)})`;
+  };
+  const paintSky = (w) => {
+    const gr = sx2.createLinearGradient(0, 0, 0, 256);
+    for (const [c0, c1, at] of SKY_STOPS) gr.addColorStop(at, lerpHex(c0, c1, w));
+    sx2.fillStyle = gr; sx2.fillRect(0, 0, 16, 256);
+  };
+  paintSky(0);
   const skyTex = new THREE.CanvasTexture(sc); skyTex.colorSpace = THREE.SRGBColorSpace;
+  let skyWarmLast = 0;
+  world.setSkyWarmth = (w) => {          // game.js drives this from the same warm as the light
+    if (Math.abs(w - skyWarmLast) < 0.03) return;
+    skyWarmLast = w; paintSky(w); skyTex.needsUpdate = true;
+  };
   const sky = new THREE.Mesh(new THREE.SphereGeometry(160, 20, 12), new THREE.MeshBasicMaterial({ map: skyTex, side: THREE.BackSide, fog: false }));
   sky.position.set(W / 2, 0, H / 2); world.group.add(sky); world.sky = sky;
   // clouds — three layers at different heights, sizes and speeds (game drifts them by

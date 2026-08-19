@@ -534,6 +534,10 @@ function applyLightPreset(world, scene, kind, warm, pal) {
   // A map may overrule the whole palette. The Odd Sizes use this to stop looking like a
   // quiet Saturday — a sherbet sky over the giant lawn, a sick green over the shag carpet.
   // Applied LAST so it wins over the preset and the golden-hour lerp alike.
+  // the sky gradient itself warms too (props.js setSkyWarmth) — the material-colour multiply
+  // alone cannot make gold out of a blue-baked texture. Never under a hard (non-arc) palette:
+  // the Odd Sizes' authored skies hold flat, as do night and the terrarium.
+  if (world.setSkyWarmth) world.setSkyWarmth((kind === 'day' || kind === 'dusk') && !(pal && !pal.arc) ? warm : 0);
   if (pal) {
     // `arc: true` = a palette that is the COOL END OF A DAY, not a fixed look. The Odd Sizes
     // want their sherbet sky held flat; Pop's route must not — a hard palette would eat the

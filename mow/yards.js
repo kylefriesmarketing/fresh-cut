@@ -769,6 +769,7 @@ export const JOBS = [
     blurb: "The Starlite reopens Friday with a monster double-feature and the lot's gone to seed between the speaker posts. Peggy runs the projector while you mow — 'consider it a private screening, hon.' Dusk show. Big screen. Tall grass.",
     pop: '—',
     lot: { w: 32, h: 20 }, seed: 503, fence: 'chain', gate: { x: 9.0, w: 2.2 }, light: 'dusk',
+    card: { x: 6.4, z: -8.4, tz: 11 },
     hero: [{ k: 'radio', x: -46, z: 56, s: 0.95, lift: 0.16 }, { k: 'tower', x: 60, z: 16, s: 0.85, lift: 0.18 }],
     palette: { hemi: 0xc9a9d8, ground: 0x2f3a2a, fogNear: 34, fogFar: 155 },
     tiers: [{ t: 'base', tier: 3 }, { t: 'rect', x: 0, z: 14, w: 32, h: 6, tier: 4 }],

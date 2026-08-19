@@ -242,8 +242,12 @@ function droneShot(final = false) {
   const W = DEF.lot.w, H = DEF.lot.h;
   const dc = new THREE.PerspectiveCamera(46, 16 / 9, 0.1, 400);
   const dist = Math.max(W, H);
-  dc.position.set(W * 0.18, dist * 0.72, H * 1.42);
-  dc.lookAt(W / 2, 0, H * 0.42);
+  // ⚠️ a map may author its own postcard angle (`def.card`). The stock camera sits SOUTH of
+  // the lot looking north — which for the drive-in is BEHIND its screen, so the keepsake was
+  // the blank back of a billboard with half the lawn hidden. y/tx/tz default to the stock frame.
+  const cd = DEF.card;
+  if (cd) { dc.position.set(cd.x, cd.y ?? dist * 0.72, cd.z); dc.lookAt(cd.tx ?? W / 2, 0, cd.tz ?? H * 0.42); }
+  else { dc.position.set(W * 0.18, dist * 0.72, H * 1.42); dc.lookAt(W / 2, 0, H * 0.42); }
   renderer.setSize(1200, 675, false);
   post.setSize(1200, 675);                 // the postcard gets the grade too — it's the keepsake
   drawScene(scene, dc, G.warm);

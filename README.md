@@ -23,6 +23,43 @@ come from playtesting** — every real find keeps coming from looking, not from 
 The full spawn-view contact sheet of all 44 jobs is reproducible in one console call
 (see v1.34's capture loop) — re-run it after any change to houses, gates or props.
 
+## v1.35 (2026-08-12) — the LAST frame of every job
+
+Same method as v1.34, next lens: the other moment every job reaches is the **finish** —
+golden hour floods in, then the postcard. Neither had ever been *looked at* across all 44
+(the arc palettes were verified numerically in v1.28; the postcard framing never at all).
+Captured both — the graded golden-hour eye view and the drone's exact postcard frame — for
+every job. Two real finds:
+
+**1. ⚠️⚠️ THE GOLDEN HOUR NEVER REACHED THE SKY DOME.** At warm 1 every arc map's sky went
+**grey-green, not gold** — warm horizon band, warm sun disc, sage dome above. The cause is
+arithmetic: `applyLightPreset` multiplies the sky material's colour over the sky texture,
+and the texture bakes a BLUE gradient (`#5d9fc8` top) — **peach × blue = grey**. A colour
+multiply cannot make gold out of blue, and v1.28's numeric check verified the *colour*, not
+the pixels the player sees. The fix (props.js): the gradient itself warms — `paintSky(w)`
+lerps each stop toward a **neutral-pale** target (not orange — the material colour supplies
+the hue; the texture only has to stop fighting it), exposed as `world.setSkyWarmth(w)` and
+driven from `applyLightPreset` with the same `warm` as the light. Verified at the texture
+level: warm 0 is **byte-identical** to the old gradient; hard (non-arc) palettes — the Odd
+Sizes' authored skies — and night/weird are **gated to 0 and never repaint**; the arc top
+stop walks `#5d9fc8 → #bcc4c8`, and the rendered dome goes rgb(112,174,202) →
+**rgb(206,184,147)**. Marge's finish is finally gold.
+
+**2. The drive-in's postcard was the back of its own screen.** The stock drone camera sits
+SOUTH of the lot looking north — and the Starlite's screen stands on the south edge facing
+its speaker rows, so the keepsake was a blank billboard back with half the lawn hidden.
+`def.card` now lets a map author its own postcard angle (x/z required, y/tx/tz default to
+the stock frame); the drive-in shoots from the north and the screen shows its face.
+
+Also reviewed and left alone, deliberately: night postcards stay night (cemetery's
+headstone rows under the street glow read beautifully; threeam is dark and that is the
+map); the indoor rooms' dollhouse-over-the-walls postcard angle works because the ceiling
+is a single-sided plane and culls from above; and the twine ball cropping out of its own
+postcard is the postcard being about the LAWN, which is right.
+
+Verified: texture-level A/B on arc/hard/night maps, rendered-pixel A/B on the dome,
+matched drive-in card render, 44/44 battery, resume byte-match, 0 console errors.
+
 ## v1.34 (2026-08-12) — the first frame of every job
 
 A systematic playtest: capture what the player actually sees the moment each of the 44 jobs
