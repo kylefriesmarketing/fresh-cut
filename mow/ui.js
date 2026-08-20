@@ -63,14 +63,14 @@ export function flash() {
 // ---------- notebook ----------
 export function renderNotebook(save, onPick) {
   const jobsEl = $('nb-jobs');
-  const campaign = JOBS.filter(j => !j.odd && !j.tour && !j.goofy);
+  const campaign = JOBS.filter(j => !j.odd && !j.tour && !j.goofy && !j.dream);
   const doneCount = campaign.filter(j => save.done[j.id]).length;
   const finaleDone = !!save.done['pops'];
   $('nb-progress').textContent = `${doneCount} of ${campaign.length} pages inked${finaleDone ? ' — and the weird calls' : ''}`;
   let html = '';
   let prevDone = true;
   for (let b = 0; b < BLOCKS.length; b++) {
-    const blockJobs = JOBS.filter(j => (j.block === b && !(b === 4 && (j.tour || j.goofy))) || (b === 4 && j.odd && !j.tour && !j.goofy));
+    const blockJobs = JOBS.filter(j => (j.block === b && !(b === 4 && (j.tour || j.goofy || j.dream))) || (b === 4 && j.odd && !j.tour && !j.goofy && !j.dream));
     if (!blockJobs.length) continue;
     if (b === 4 && !finaleDone) { html += `<div class="blockhead">— a few pages are stuck together —</div>`; continue; }
     html += `<div class="blockhead">${BLOCKS[b].name} · <span style="font-weight:normal;letter-spacing:0;text-transform:none;color:#8a7c62">${BLOCKS[b].sub}</span></div>`;
@@ -79,7 +79,7 @@ export function renderNotebook(save, onPick) {
     for (const j of blockJobs) {
       const done = save.done[j.id];
       const locked = b < 4 ? !prevDone : false;
-      const st = done ? '✓' : locked ? '🔒' : (j.goofy ? '◇' : j.tour ? '◈' : j.odd ? '☎' : '▢');
+      const st = done ? '✓' : locked ? '🔒' : (j.dream ? '✧' : j.goofy ? '◇' : j.tour ? '◈' : j.odd ? '☎' : '▢');
       const missedKeep = done && j.disc?.some(d => d.tier === 'keep') && !done.keeps;
       html += `<div class="jobrow ${locked ? 'locked' : ''}" data-id="${j.id}">
         <div class="st" style="${done ? 'color:#c0392b' : ''}">${st}</div>
@@ -125,10 +125,11 @@ export function renderNumbers(save) {
   const L = save.lifetime, done = save.done || {};
   const ids = Object.keys(done);
   const book = (pred) => { const all = JOBS.filter(pred); return [all.filter(j => done[j.id]).length, all.length]; };
-  const [mainD, mainT] = book(j => !j.odd && !j.tour && !j.goofy);
+  const [mainD, mainT] = book(j => !j.odd && !j.tour && !j.goofy && !j.dream);
   const [oddD, oddT] = book(j => j.odd);
   const [tourD, tourT] = book(j => j.tour);
   const [gooD, gooT] = book(j => j.goofy);
+  const [drmD, drmT] = book(j => j.dream);
   // a lawn is about 300 m² — the unit the job is actually measured in
   const lawns = (L.area / 300);
   const gearJobs = L.gearJobs || {};
@@ -145,7 +146,7 @@ export function renderNumbers(save) {
 
   h += `<div class="blockhead">The Books</div>`;
   for (const [nm, d, t] of [['The Route', mainD, mainT], ['The Odd Jobs', oddD, oddT],
-                            ['The Wider Job Book', tourD, tourT], ['The Odd Sizes', gooD, gooT]]) {
+                            ['The Wider Job Book', tourD, tourT], ['The Odd Sizes', gooD, gooT], ['The Pages Nobody Wrote', drmD, drmT]]) {
     h += `<div class="jobrow"><div class="st" style="${d >= t ? 'color:#c0392b' : ''}">${d >= t ? '✔' : '▢'}</div>
       <div class="who"><div class="nm">${nm}</div>
         <span class="margin"><span class="numbar"><i style="width:${t ? (d / t * 100).toFixed(0) : 0}%"></i></span></span></div>

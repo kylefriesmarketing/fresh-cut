@@ -12,7 +12,7 @@
 //   -9.2         neighbour house fronts
 import * as THREE from 'three';
 import { mat, box, cyl, sph, cone, gableRoof } from './props.js';
-import { mulberry } from './grass.js';
+import { mulberry, NO_STREET_HOODS } from './grass.js';
 
 const WALK_Z = -1.1;
 const LANE_NEAR = -3.2, LANE_FAR = -5.6;   // near lane drives +x, far lane drives -x
@@ -212,7 +212,7 @@ export function buildStreet(scene, def, world, quality) {
   // five neighbour houses, driveways, parked cars, pedestrians and a live traffic pool
   // behind the north wall — visible through the window, and ticked every frame for nothing.
   // The same literal list lives in props.js; change both together.
-  const NON_RESIDENTIAL = ['parkland', 'openfield', 'water', 'city', 'orchardland', 'indoor'];
+  const NON_RESIDENTIAL = NO_STREET_HOODS;
   const noStreet = NON_RESIDENTIAL.includes(def.hood);
   const quiet = !!def.finale || def.street === false || noStreet;
   const gapRange = (def.street === false || noStreet) ? null : quiet ? [30, 55] : night ? [13, 26] : [5.5, 11.5];

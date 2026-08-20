@@ -74,6 +74,14 @@ export const HOODS = {
     tree: 'tall', treeN: 1, hedge: 0, far: ['roofs', 'trees'], spacing: 40,
     ringDens: 0.75, ringNear: 54, ringTreeScale: 9,
   },
+  // ---- THE PAGES NOBODY WROTE need a horizon that isn't a town ----
+  // No neighbours, no ring, no landmark: whatever the map puts out there IS the horizon.
+  // These pages are not in Hazel Park and the backdrop must not argue with that.
+  elsewhere: {
+    residential: false,
+    body: [0xd8cbb4], roof: [0x6a6258], rise: 0.3, w: [6, 8], h: [3, 4],
+    tree: 'sparse', treeN: 0, hedge: 0, far: [], spacing: 40, ringDens: 0,
+  },
   orchardland: { // more orchard, in every direction
     residential: false,
     body: [0xe2dccb], roof: [0x7a4a3c], rise: 1.8, w: [6, 8], h: [3, 4],
@@ -305,6 +313,36 @@ const TOWN = {
       }
     }
     for (const sx of [-L / 2 + 1.5 * s, L / 2 - 1.5 * s]) g.add(box(5 * s, 5 * s, 9.5 * s, h.pier || 0xb0a89a, sx, 2.5 * s, 0));
+  },
+  // ---- things that are not in Hazel Park ----
+  moon(g, s, h) {                               // far too close, and it has a face if you look
+    const R = 22 * s;
+    g.add(sph(R, h.c || 0xf4eede, 0, R * 0.72, 0, 22));
+    for (const [mx, my, mr] of [[-7, 8, 4.4], [6, 13, 3.2], [2, -3, 5.6], [-11, -5, 2.8], [10, 1, 2.2]])
+      g.add(sph(mr * s, h.sea || 0xdcd4c2, mx * s, R * 0.72 + my * s, R * 0.94, 10));   // seas
+    if (h.ring !== false) { const rg = cyl(R * 1.34, R * 1.34, 0.16 * s, h.halo || 0xe8e2d0, 0, R * 0.72, -3.2 * s, 26); rg.rotation.x = 0.12; g.add(rg); }
+  },
+  arch(g, s, h) {                               // a door with no house, standing in a field
+    const c = h.c || 0x8f8578, H2 = 30 * s, W2 = 20 * s, t = 3.2 * s;
+    for (const sx of [-W2 / 2, W2 / 2]) g.add(box(t, H2, t, c, sx, H2 / 2, 0));
+    g.add(box(W2 + t, t, t * 1.15, c, 0, H2 + t / 2, 0));
+    g.add(box(W2 * 0.42, t * 0.6, t * 1.3, h.cap || 0x6f6a60, 0, H2 + t * 1.1, 0));
+    // the gap between the posts is a different sky
+    const pane = new THREE.Mesh(new THREE.PlaneGeometry(W2 - t, H2 - t * 0.5), mat(h.through || 0x2a3f6e));
+    pane.position.set(0, (H2 - t * 0.5) / 2, -0.4 * s); g.add(pane);
+    for (let i = 0; i < 7; i++) g.add(sph(0.5 * s, 0xf4eede, (-0.34 + (i % 3) * 0.3) * W2, H2 * (0.2 + i * 0.1), -0.3 * s, 7));
+  },
+  whale(g, s, h) {                              // it is swimming, and it is up there
+    const c = h.c || 0x5a6b86, L = 34 * s;
+    const body = sph(L * 0.3, c, 0, 0, 0, 16); body.scale.set(1.9, 0.72, 0.86); g.add(body);
+    const head = sph(L * 0.17, c, L * 0.42, -0.6 * s, 0, 12); head.scale.set(1.2, 0.8, 0.9); g.add(head);
+    g.add(box(L * 0.42, 0.5 * s, L * 0.2, h.belly || 0x8fa2b8, L * 0.06, -L * 0.17, 0));
+    const fl = cyl(0.4 * s, L * 0.16, L * 0.22, c, -L * 0.5, 1.2 * s, 0, 8); fl.rotation.z = 1.15; g.add(fl);
+    for (const sz of [-1, 1]) {
+      const fin = sph(L * 0.1, c, -L * 0.02, -L * 0.1, sz * L * 0.16, 8);
+      fin.scale.set(1.5, 0.28, 0.7); fin.rotation.y = sz * 0.4; g.add(fin);
+    }
+    g.position.y = (h.y ?? 26) * s;              // it floats; the group's own y is the altitude
   },
   radio(g, s, h) {                              // the mast out past the last streetlight
     const H2 = 38 * s, c = h.c || 0xb9bcc0;
@@ -638,7 +676,9 @@ function buildHeroes(root, def, cx, cz) {
     } else if (TOWN[h.k]) {
       TOWN[h.k](g, s, h);
     }
-    g.position.set(cx + (h.x || 0), 0, cz + (h.z || 0));
+    // ⚠️ y is set BEFORE this, by the few heroes that float (the whale), so read it back
+    // rather than zeroing it — assigning 0 here is what would nail the whale to the ground.
+    g.position.set(cx + (h.x || 0), g.position.y, cz + (h.z || 0));
     if (h.rot) g.rotation.y = h.rot;
     g.traverse(o => { if (o.isMesh) o.castShadow = false; });
     g.userData.hero = h.k;      // so they can be toggled for a measured A/B (see __fc.heroCost)
@@ -784,7 +824,7 @@ export function buildHood(scene, def, world, quality) {
   }
 
   const ring = new THREE.Group();
-  const rings = Math.round(52 * far * (P.ringDens || 1));
+  const rings = Math.round(52 * far * (P.ringDens ?? 1));
   // ⚠️ the ring is random and the heroes are authored, so a ring tower (or a 3-scale tree)
   // could land squarely in FRONT of the landmark the map is named for. Keep a clear yard
   // around every hero — the hospital sits INSIDE the city ring band, so this is what

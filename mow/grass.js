@@ -12,6 +12,13 @@ export const TPM = 8;                 // texels per meter (12.5 cm)
 const CHUNK = 4;                      // meters per blade chunk
 export const CUT = 255, HIGH = 128, UNCUT = 0;
 export const M_WCLUMP = 16, M_TRIM = 32, M_NOGRASS = 255;
+// ⚠️ THE HOODS THAT GET NO STREET. This lived as two hand-copied literals in props.js and
+// street.js and drifted THREE times: 'indoor' was missing (v1.32 — a road and a pavement
+// inside the lounge) and 'elsewhere' was missing again the day it was added (a water tower
+// and a red barn on the horizon of a cloud field). It lives here because props.js and
+// street.js both already import from grass.js, while neither may import hood.js.
+export const NO_STREET_HOODS = ['parkland', 'openfield', 'water', 'city', 'orchardland', 'indoor', 'elsewhere'];
+
 const TIER_H = [0, 0.11, 0.24, 0.40, 0.66];      // blade height by tier
 const DENSITY = { high: 80, med: 44, low: 20 };  // blades per m²
 const FLOWER_DENS = { high: 0.85, med: 0.55, low: 0 };  // per m² of tall grass
@@ -49,6 +56,30 @@ export class GrassField {
     this.uWarm = { value: 0 };
     this.uCloudAmt = { value: quality === 'low' ? 0 : 1 };
     this.uLotV = { value: new THREE.Vector2(W, H) };
+    // ---- THE LOOK ----
+    // What you are cutting is no longer hardcoded green. The blades and the ground overlay
+    // read these, so one palette drives both and they can never disagree. Defaults are the
+    // exact literals that used to be baked into the two shaders — every existing map is
+    // pixel-identical until it asks for something else via `def.grass`.
+    //
+    // ⚠️ THE STRIPES ARE TWO REAL SHADES NOW, not one colour scaled ±10%. That old
+    // `base * (0.90 + 0.20*tone)` is why the lines read as a faint sheen instead of the
+    // light/dark banding a striped lawn actually has: same hue, 22% apart. Now the cut
+    // lerps between uStripeD (deeper, bluer — grass leaning away) and uStripeL (paler,
+    // yellower — leaning toward you), and `uStripeAmt` scales how far apart they sit.
+    // ⚠️ v1.4's rule still holds and must: BOTH shades stay far brighter than uncut grass,
+    // so fresh cut never reads dark. The dark stripe is still ~2x the uncut colour.
+    this.uStripeD = { value: new THREE.Color(0.335, 0.530, 0.195) };
+    this.uStripeL = { value: new THREE.Color(0.520, 0.780, 0.310) };
+    this.uStripeAmt = { value: 1 };
+    this.uUncutA = { value: new THREE.Color(0.16, 0.27, 0.12) };   // tier-1 uncut
+    this.uUncutB = { value: new THREE.Color(0.11, 0.19, 0.10) };   // tier-4 uncut
+    this.uHighC = { value: new THREE.Color(0.20, 0.34, 0.13) };    // the high-cut first pass
+    this.uRootC = { value: new THREE.Color(0.16, 0.30, 0.10) };    // blade root
+    this.uTipA = { value: new THREE.Color(0.38, 0.60, 0.22) };     // blade tip, short
+    this.uTipB = { value: new THREE.Color(0.30, 0.48, 0.26) };     // blade tip, tall
+    this.uCutTip = { value: new THREE.Color(0.45, 0.665, 0.245) }; // cut stubble
+    this._LOOK = ['StripeD', 'StripeL', 'UncutA', 'UncutB', 'HighC', 'RootC', 'TipA', 'TipB', 'CutTip'];
     this.chunks = []; this.group = new THREE.Group(); scene.add(this.group);
     this._noGrassCircles = []; this._clipCB = null;
     this.tex = new THREE.DataTexture(this.mask, this.tw, this.th, THREE.RGBAFormat);
@@ -355,13 +386,25 @@ export class GrassField {
   }
   setMow(x, z, s) { if (this.bladeMat) this.bladeMat.uniforms.uMow.value.set(x, z, s); }
   setSun(warm) { this.uWarm.value = warm; }
+  // What this map is made of. `def.grass` names any subset — {stripeD, stripeL, uncutA,
+  // uncutB, highC, rootC, tipA, tipB, cutTip} as hex, plus `stripeAmt`. Anything omitted
+  // keeps the default green, so a map can retint just its stripes or become clouds entirely.
+  setLook(look) {
+    if (!look) return;
+    for (const k of this._LOOK) {
+      const key = k[0].toLowerCase() + k.slice(1);
+      if (look[key] !== undefined) this['u' + k].value.set(look[key]);
+    }
+    if (look.stripeAmt !== undefined) this.uStripeAmt.value = look.stripeAmt;
+  }
   dispose() { this.group.removeFromParent(); if (this.overlay) this.overlay.removeFromParent(); }
 }
 
 // ---------- materials ----------
 function makeBladeMaterial(tex, F) {
   return new THREE.ShaderMaterial({
-    uniforms: { uMask: { value: tex }, uLot: F.uLotV, uTime: F.uTime, uWarm: F.uWarm, uCloudAmt: F.uCloudAmt, uMow: { value: new THREE.Vector3(-99, -99, 0) } },
+    uniforms: { uMask: { value: tex }, uLot: F.uLotV, uTime: F.uTime, uWarm: F.uWarm, uCloudAmt: F.uCloudAmt, uMow: { value: new THREE.Vector3(-99, -99, 0) },
+      uRootC: F.uRootC, uTipA: F.uTipA, uTipB: F.uTipB, uCutTip: F.uCutTip },
     side: THREE.DoubleSide,
     vertexShader: `
       attribute vec2 aOff; attribute vec4 aRnd; attribute float aY;
@@ -388,7 +431,10 @@ function makeBladeMaterial(tex, F) {
         vTip = y; vTier = tier; vCut = cut;
         // stripe tone from cut direction
         float ang = m.g * 6.28318;
-        vTone = mix(1.0, 1.0 + 0.16 * cos(ang - 0.785), cut);
+        // the blades stripe with the same crisp two-band curve the overlay uses, so the nap
+        // and the painted ground agree instead of one sheening across the other
+        float bt = smoothstep(0.18, 0.82, 0.5 + 0.5 * cos(ang - 0.785));
+        vTone = mix(1.0, 0.80 + 0.40 * bt, cut);
         // wrongness shade for tall grass
         vShade = mix(1.0, 0.82, (1.0 - cut) * (1.0 - high) * clamp((tier - 1.0) / 3.0, 0.0, 1.0)) - wcl * (1.0 - cut) * 0.14;
         // build the blade
@@ -413,14 +459,15 @@ function makeBladeMaterial(tex, F) {
       }`,
     fragmentShader: `
       uniform float uWarm;
+      uniform vec3 uRootC; uniform vec3 uTipA; uniform vec3 uTipB; uniform vec3 uCutTip;
       varying float vShade; varying float vTone; varying float vTip; varying float vTier; varying float vCut;
       varying float vCloud;
       void main(){
-        vec3 root = vec3(0.16, 0.30, 0.10);
-        vec3 tip  = mix(vec3(0.38, 0.60, 0.22), vec3(0.30, 0.48, 0.26), clamp((vTier - 1.0) / 3.0, 0.0, 1.0) * (1.0 - vCut));
+        vec3 root = uRootC;
+        vec3 tip  = mix(uTipA, uTipB, clamp((vTier - 1.0) / 3.0, 0.0, 1.0) * (1.0 - vCut));
         // cut stubble sits almost exactly on the overlay's fresh-cut green, so the nap reads
         // as turf texture instead of pale specks scattered over the lawn
-        tip = mix(tip, vec3(0.45, 0.665, 0.245), vCut);
+        tip = mix(tip, uCutTip, vCut);
         // cut stubble skips the dark root entirely — at 4cm a root→tip gradient just
         // reads as speckle, which is what made a finished lawn look dirty rather than clean
         float tmix = mix(vTip, 0.58 + 0.42 * vTip, vCut);
@@ -518,12 +565,15 @@ function makeFlowerMaterial(mask, atlas, F) {
 }
 function makeOverlayMaterial(tex, trackTex, F) {
   return new THREE.ShaderMaterial({
-    uniforms: { uMask: { value: tex }, uWarm: F.uWarm, uTracks: { value: trackTex }, uTime: F.uTime, uCloudAmt: F.uCloudAmt, uLot: F.uLotV },
+    uniforms: { uMask: { value: tex }, uWarm: F.uWarm, uTracks: { value: trackTex }, uTime: F.uTime, uCloudAmt: F.uCloudAmt, uLot: F.uLotV,
+      uStripeD: F.uStripeD, uStripeL: F.uStripeL, uStripeAmt: F.uStripeAmt, uUncutA: F.uUncutA, uUncutB: F.uUncutB, uHighC: F.uHighC },
     transparent: true, depthWrite: false,
     vertexShader: `varying vec2 vUv; void main(){ vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }`,
     fragmentShader: `
       uniform sampler2D uMask; uniform float uWarm; uniform sampler2D uTracks; varying vec2 vUv;
       uniform float uTime; uniform vec2 uLot;
+      uniform vec3 uStripeD; uniform vec3 uStripeL; uniform float uStripeAmt;
+      uniform vec3 uUncutA; uniform vec3 uUncutB; uniform vec3 uHighC;
       ${CLOUD_GLSL}
       float hash(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }
       void main(){
@@ -543,18 +593,24 @@ function makeOverlayMaterial(tex, trackTex, F) {
         float n = hash(floor(vUv * 420.0)) * 0.06;
         vec3 col; float a;
         if (cut > 0.5) {
-          // fresh cut is ALWAYS the clean bright green; the mow direction only tilts it
-          // +-10% for stripes. (It used to lerp the whole way down to a dark green, so
-          // mowing in one direction painted the new cut nearly as dark as uncut grass —
-          // you couldn't see the cut happen under the deck, only the stripes behind you.)
+          // fresh cut is ALWAYS clean and bright — the direction picks WHICH of the two
+          // cut shades you get, it never darkens toward uncut. (It used to lerp the whole
+          // way down to a dark green, so mowing one way painted new cut nearly as dark as
+          // uncut grass and you couldn't see the cut happen under the deck.)
           float ang = m.g * 6.28318;
           float tone = 0.5 + 0.5 * cos(ang - 0.785);
-          col = vec3(0.42, 0.66, 0.24) * (0.90 + 0.20 * tone);
+          // ⚠️ CRISP BANDS. A raw cosine ramps smoothly, so opposite passes blurred into
+          // one sheen; smoothstep pushes texels toward one shade or the other and the band
+          // EDGE lands where the lane edge is. This is what makes the lines read as lines.
+          tone = smoothstep(0.18, 0.82, tone);
+          vec3 sd = mix(mix(uStripeD, uStripeL, 0.5), uStripeD, uStripeAmt);
+          vec3 sl = mix(mix(uStripeD, uStripeL, 0.5), uStripeL, uStripeAmt);
+          col = mix(sd, sl, tone);
           a = 0.60;
         } else if (high > 0.5) {
-          col = vec3(0.20, 0.34, 0.13) * (1.0 - n); a = 0.30;
+          col = uHighC * (1.0 - n); a = 0.30;
         } else {
-          col = mix(vec3(0.16, 0.27, 0.12), vec3(0.11, 0.19, 0.10), clamp((tier - 1.0) / 3.0, 0.0, 1.0)) * (1.0 - n);
+          col = mix(uUncutA, uUncutB, clamp((tier - 1.0) / 3.0, 0.0, 1.0)) * (1.0 - n);
           a = 0.42 + 0.12 * clamp((tier - 1.0) / 3.0, 0.0, 1.0);
         }
         col = mix(col, col * vec3(1.14, 1.02, 0.80), uWarm * 0.5);

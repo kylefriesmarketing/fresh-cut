@@ -2,7 +2,7 @@
 // The procedural prop kit + yard builder. Storybook Americana from primitives.
 // Every prop registers collision circles; some claim no-grass footprints and trim rings.
 import * as THREE from 'three';
-import { mulberry } from './grass.js';
+import { mulberry, NO_STREET_HOODS } from './grass.js';
 import { drapePlane } from './terrain.js';
 
 const MATS = {};
@@ -666,14 +666,18 @@ export function buildYard(scene, def, grass, quality) {
   // north wall) and centre-lines — plus street.js's five houses and moving traffic, right
   // outside the window you can see through. Keep the two lists in step.
   const INDOOR = def.hood === 'indoor';
-  if (!INDOOR && !['parkland', 'openfield', 'water', 'city', 'orchardland'].includes(def.hood)) {
+  if (!NO_STREET_HOODS.includes(def.hood)) {
     const road = new THREE.Mesh(new THREE.PlaneGeometry(W + 24, 5), mat(0x4a4a4e)); road.rotation.x = -Math.PI / 2; road.position.set(W / 2, -0.02, -4.4); sur.add(road);
     const walk = new THREE.Mesh(new THREE.PlaneGeometry(W + 24, 1.6), mat(0xbdb6a6)); walk.rotation.x = -Math.PI / 2; walk.position.set(W / 2, -0.01, -1.1); sur.add(walk);
   }
   // ⚠️ indoors the apron is the FLOOR, not more lawn. It was grass-green under the furniture
   // and right up to the skirting, so the carpet appeared to run on for ever and the room read
   // as a lawn with walls around it. `def.room.floor` names the boards/lino/parquet.
-  const aproC = INDOOR ? ((def.room && def.room.floor) ?? 0x8a6a4a) : 0x5c8747;
+  // ⚠️ the apron is whatever this world is made OF. Lawn-green is right for Hazel Park, a
+  // floor is right indoors — and on a cloud field or an ember field it was a green stripe
+  // along the horizon giving the whole page away. `def.apron` names it; the dream book
+  // hands it the same colour as its uncut material so the world simply continues.
+  const aproC = def.apron ?? (INDOOR ? ((def.room && def.room.floor) ?? 0x8a6a4a) : 0x5c8747);
   const apron = new THREE.Mesh(new THREE.PlaneGeometry(W + 60, 60), mat(aproC)); apron.rotation.x = -Math.PI / 2; apron.position.set(W / 2, -0.03, H + 30); sur.add(apron);
   const apron2 = new THREE.Mesh(new THREE.PlaneGeometry(W + 60, 24), mat(aproC)); apron2.rotation.x = -Math.PI / 2; apron2.position.set(W / 2, -0.03, -18.8); sur.add(apron2);
   for (const sx of [-1, 1]) { const side = new THREE.Mesh(new THREE.PlaneGeometry(30, H + 90), mat(aproC)); side.rotation.x = -Math.PI / 2; side.position.set(sx < 0 ? -15.2 : W + 15.2, -0.03, H / 2 - 10); sur.add(side); }
@@ -684,7 +688,8 @@ export function buildYard(scene, def, grass, quality) {
   wt.add(cyl(1.6, 1.9, 2.6, 0x9db3bd, 0, 9.4, 0, 10));
   wt.add(cone(1.95, 1.1, 0x86232a, 0, 11.6, 0, 10));
   for (const a of [0, 1.57, 3.14, 4.71]) wt.add(cyl(0.12, 0.12, 8.6, 0x7a8a92, Math.sin(a) * 1.2, 4.2, Math.cos(a) * 1.2, 6));
-  wt.position.set(W + 26, 0, H + 34); world.group.add(wt);
+  wt.position.set(W + 26, 0, H + 34);
+  if (!NO_STREET_HOODS.includes(def.hood)) world.group.add(wt);   // not in Hazel Park, no Hazel Park water tower
 
   // --- house on the lot (door + porch face the street at -z) ---
   world.windows = [];

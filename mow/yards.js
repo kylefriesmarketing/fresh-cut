@@ -65,6 +65,7 @@ function quadZones(W, H, names) {
 // ---------- THE NOTEBOOK ----------
 import { TOUR } from './tour.js';
 import { GOOFY } from './goofy.js';
+import { DREAM } from './dream.js';
 
 export const BLOCKS = [
   { name: 'The Route', sub: "Pop's people. They're yours now." },
@@ -74,6 +75,7 @@ export const BLOCKS = [
   { name: 'After the Route', sub: 'The weird calls. Pop kept a separate page.' },
   { name: 'The Wider Job Book', sub: 'Ten places that are not somebody\'s front lawn.' },
   { name: 'The Odd Sizes', sub: 'Pop kept these in a different notebook. He never said why.' },
+  { name: 'The Pages Nobody Wrote', sub: 'The notebook grows them by itself. Lately they are not from here.' },
 ];
 
 export const JOBS = [
@@ -830,6 +832,7 @@ export const JOBS = [
   // THE WIDER JOB BOOK — ten places that are not somebody's front lawn (block 5)
   ...TOUR,
   ...GOOFY,
+  ...DREAM,
 ];
 
 // ---------- gear unlock schedule ----------

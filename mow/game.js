@@ -35,6 +35,7 @@ export class Game {
     // grass next, then the yard (props paint no-grass + trim rings), then finalize
     const g = this.grass = new GrassField(scene, def.lot.w, def.lot.h, this.quality);
     g.terrain = this.terrain;
+    g.setLook(def.grass);          // what this map is made of — clouds, embers, fur, grass
     for (const t of def.tiers || []) {
       if (t.t === 'base') g.tierRect(0, 0, def.lot.w, def.lot.h, t.tier);
       else if (t.t === 'rect') g.tierRect(t.x, t.z, t.w, t.h, t.tier);

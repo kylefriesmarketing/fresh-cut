@@ -13,6 +13,73 @@ Deploy = copy the whole folder to any static host (GitHub Pages works as-is).
 **F** high-cut lever (jungle grass needs it first) · hold **LMB** to trim ·
 **R** Pop's radio · **Z** zone list · **L** last-blade glow · **Esc** pause.
 
+## v1.36 (2026-08-12) — 🌙 THE PAGES NOBODY WROTE + stripes you can actually make
+
+Kyle's direction: *"there are already lawn mowing sims — we need something different and
+better; take the goofy and fantasy to the extreme,"* plus *"different shades of green with
+the mower lines so people can make the nice lines."* Both, and they turned out to be the
+same change.
+
+### The differentiator: THE GRASS STOPS BEING GRASS
+
+Cutting here is a mask plus a shader, so **everything satisfying about mowing — the stripes,
+the bag, the discoveries, the pattern score, the postcard — transfers intact to any
+material.** No other mowing sim can do that; this engine gets it nearly free. The blade and
+overlay colours were hardcoded literals; they are now uniforms, set per map via **`def.grass`**
+(`stripeD/stripeL/uncutA/uncutB/highC/rootC/tipA/tipB/cutTip`, plus `stripeAmt`). Anything
+omitted stays green, so a map can retint only its stripes or become weather entirely.
+
+**`mow/dream.js` — a fifth book, five pages**, hooked to a line the game has always had (the
+Daily Lawn: *"every morning the notebook grows one page nobody wrote"*). Those pages are not
+ordinary any more:
+- **The Cloud Field** — a field on top of the cloud, cut before the sun gets high enough for
+  anyone on the ground to see it. Hover only. A whale goes past.
+- **The Star Meadow** — the night sky from the wrong side, gone to seed. Cutting it doesn't
+  put the stars out; it lets them through.
+- **The Ember Field** — the fire went through in August and never quite went out. It doesn't
+  spread and it doesn't burn you. The insurance man had no box for it.
+- **The Sleeping Hill** — a hill with a footpath, a bench, a view, and a pulse of about four
+  beats a minute. Mow **with** the grain. The ribs are real terrain ridges.
+- **The Page That Wrote Itself** — the finale of the book. It starts as night sky and **ends
+  as an ordinary lawn**: the cut *is* the dawn. The handwriting in the margin is Pop's.
+
+⚠️ **THE VOICE DOES NOT CHANGE, and this is the whole instrument.** Nobody in this book knows
+they are somewhere strange, exactly as nobody in The Odd Sizes knows they are funny. The
+moment a character says "how WEIRD!" the page dies. **Pop's route is what makes these land** —
+nineteen honest pages in Hazel Park first, so when the grass is cloud you just do what you
+always do, which is mow it properly and go home. The quiet route is not competing with the
+fantasy; it is the reason the fantasy works. It stays.
+
+### The stripes
+
+`base * (0.90 + 0.20*tone)` — one colour, same hue, 22% apart — is why the lines read as a
+faint sheen. Now the cut lerps between **two real shades** (deeper/bluer vs paler/yellower),
+and a **smoothstep gives the bands a crisp edge** that lands where the lane edge is, on both
+the ground overlay and the blades so the nap and the paint agree. Measured on eight
+alternating passes: light/dark spread **22.9% → 39.9%**. `stripeAmt` scales it per map.
+⚠️ v1.4's rule still holds: **both** shades stay far brighter than uncut, so fresh cut never
+reads dark — that bug ("I can't see it cut") is what forced the flat ±10% in the first place.
+
+### Three bugs the new book exposed
+
+- ⚠️⚠️ **`(P.ringDens || 1)` — FALSY ZERO.** `ringDens: 0` means *no horizon ring*, but `|| 1`
+  reads 0 as "unset" and built a full one, which is why a field on top of a cloud had a
+  **treeline**. Now `?? 1`.
+- ⚠️ **A Hazel Park water tower stood on EVERY map** — ungated in props.js, so it was also on
+  the reservoir, on the roof six floors up, and on the cloud field. If a map has no street it
+  is not in Hazel Park.
+- ⚠️ **The no-street hood list drifted for the THIRD time.** It was two hand-copied literals
+  (props.js + street.js): `indoor` was missing in v1.32, `elsewhere` was missing the day it
+  was added. It is now **one exported constant, `NO_STREET_HOODS` in grass.js** — which both
+  files already import, and neither may import hood.js (the documented circular-import reason
+  they were literals). Also new: **`def.apron`**, so the ground past the fence is whatever the
+  world is made of — the green horizon strip was giving every dream page away.
+
+Verified: **49/49 jobs**, 0 console errors, and the refactor proven neutral by A/B against the
+**deployed old shader** — uncut lawn on marge is byte-identical, rgb(88,132,58) either side.
+Town layer on the dream maps 340 → 10 meshes (the 10 are the invisible bird flock); marge
+still 340.
+
 ## ⏭️ NEXT SESSION — the backlog is clear
 
 Everything on the standing list is done: campaign heroes + palettes (v1.28), the mower pass
